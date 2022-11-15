@@ -290,7 +290,6 @@ class LinearLayer(Layer):
         """
 
         self._cache_current = (x, self._W, self._b)
-        
         return np.dot(x, self._W) + self._b
 
     def backward(self, grad_z):
@@ -355,7 +354,22 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._layers = None
+        self._layers = []
+        for layer_num in range(len(self.neurons)):
+            # add linear layer
+            n_out = self.neurons[layer_num]
+            if layer_num == 0:
+                n_in = self.input_dim
+            else:
+                n_in = self.neurons[layer_num-1]
+            self._layers.append(LinearLayer(n_in, n_out))
+            
+            # add activation function
+            if self.activations[layer_num] == "relu":
+                self._layers.append(ReluLayer())
+            else:
+                self._layers.append(SigmoidLayer())
+            
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -374,7 +388,11 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        return np.zeros((1, self.neurons[-1])) # Replace with your own code
+        y = x
+        # propagate x forward through the network
+        for layer in self._layers:
+            y = layer.forward(x)
+        return y 
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -398,8 +416,12 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
-
+        # propagate grad_z backwards through the network
+        grad = grad_z
+        for layer in self._layers:
+            # get grad of loss wrt layer input
+            grad = layer.backward(grad)
+        
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -415,7 +437,8 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        for layer in self._layers:
+            layer.update_params(learning_rate)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
