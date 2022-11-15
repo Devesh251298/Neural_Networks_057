@@ -391,7 +391,7 @@ class MultiLayerNetwork(object):
         y = x
         # propagate x forward through the network
         for layer in self._layers:
-            y = layer.forward(x)
+            y = layer.forward(y)
         return y 
 
         #######################################################################
