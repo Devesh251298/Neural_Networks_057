@@ -524,7 +524,10 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        dataset = np.append(input_dataset,target_dataset,axis=1)
+        if len(np.shape(input_dataset)) == 1:
+            dataset = np.append(np.reshape(input_dataset,(np.shape(input_dataset)[0],1)),target_dataset,axis=1)
+        else :
+            dataset = np.append(input_dataset,target_dataset,axis=1)
         np.random.shuffle(dataset)
         return dataset
 
@@ -555,7 +558,11 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        dataset = np.append(input_dataset,target_dataset,axis=1)
+        if len(np.shape(input_dataset)) == 1:
+            print(np.reshape(input_dataset,(np.shape(input_dataset)[0],1)))
+            dataset = np.append(np.reshape(input_dataset,(np.shape(input_dataset)[0],1)),target_dataset,axis=1)
+        else :
+            dataset = np.append(input_dataset,target_dataset,axis=1)
         for epoch in range(self.nb_epoch):
             if self.shuffle_flag:
                 dataset= self.shuffle(input_dataset, target_dataset)
@@ -684,15 +691,18 @@ class Preprocessor(object):
 
 
 def example_main():
-    input_dim = 4
+    input_dim = 1
     neurons = [16, 3]
     activations = ["relu", "identity"]
     net = MultiLayerNetwork(input_dim, neurons, activations)
 
     dat = np.loadtxt("iris.dat")
     np.random.shuffle(dat)
-    x = dat[:, :4]
+    x = dat[:,0]
+
     y = dat[:, 4:]
+
+    print(len(np.shape(x)))
 
     split_idx = int(0.8 * len(x))
 
