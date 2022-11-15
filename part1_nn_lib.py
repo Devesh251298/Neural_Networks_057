@@ -288,7 +288,6 @@ class LinearLayer(Layer):
         Returns:
             {np.ndarray} -- Output array of shape (batch_size, n_out)
         """
-
         self._cache_current = (x, self._W, self._b)
         return np.dot(x, self._W) + self._b
 
@@ -308,8 +307,10 @@ class LinearLayer(Layer):
         """
         x_previous = self._cache_current[0]
         W_previous = self._cache_current[1]
-        self._grad_W_current = np.dot( x_previous.T, grad_z)
-        self._grad_b_current = np.sum(grad_z, axis=1)
+        self._grad_W_current = np.dot(x_previous.T, grad_z)
+
+        self._grad_b_current = np.sum(grad_z, axis=0)
+
 
         return np.dot(grad_z, W_previous.T)
         
@@ -418,9 +419,10 @@ class MultiLayerNetwork(object):
         #######################################################################
         # propagate grad_z backwards through the network
         grad = grad_z
-        for layer in self._layers:
+        for layer in self._layers[::-1]:
             # get grad of loss wrt layer input
             grad = layer.backward(grad)
+
         
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -522,7 +524,9 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        dataset = np.append(input_dataset,target_dataset,axis=1)
+        np.random.shuffle(dataset)
+        return dataset
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -551,7 +555,23 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        dataset = np.append(input_dataset,target_dataset,axis=1)
+        if self.shuffle_flag:
+            dataset= self.shuffle(input_dataset, target_dataset)
+
+        batches = np.split(dataset, self.batch_size)
+        for epoch in range(self.nb_epoch):
+            for batch in batches :
+                output = self.network(batch[:,:4])
+                if self.loss_fun == "mse":
+                    loss_f = CrossEntropyLossLayer()
+                else:
+                    loss_f = MSELossLayer()
+
+                loss = loss_f.forward(output, batch[:,4:])
+                grad_z = loss_f.backward()
+                self.network.backward(grad_z)
+                self.network.update_params(self.learning_rate)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -574,7 +594,14 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        if self.loss_fun == "mse":
+            loss_f = CrossEntropyLossLayer()
+        else:
+            loss_f = MSELossLayer()
+
+        loss = loss_f.forward(self.network(input_dataset), target_dataset)
+
+        return loss
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -663,7 +690,6 @@ def example_main():
     net = MultiLayerNetwork(input_dim, neurons, activations)
 
     dat = np.loadtxt("iris.dat")
-    np.random.shuffle(dat)
 
     x = dat[:, :4]
     y = dat[:, 4:]
@@ -684,7 +710,7 @@ def example_main():
     trainer = Trainer(
         network=net,
         batch_size=8,
-        nb_epoch=1000,
+        nb_epoch=10000,
         learning_rate=0.01,
         loss_fun="cross_entropy",
         shuffle_flag=True,
@@ -696,6 +722,7 @@ def example_main():
 
     preds = net(x_val_pre).argmax(axis=1).squeeze()
     targets = y_val.argmax(axis=1).squeeze()
+    
     accuracy = (preds == targets).mean()
     print("Validation accuracy: {}".format(accuracy))
 
