@@ -560,6 +560,7 @@ class Trainer(object):
             dataset= self.shuffle(input_dataset, target_dataset)
 
         batches = np.split(dataset, self.batch_size)
+        print(self.shuffle_flag)
         for epoch in range(self.nb_epoch):
             for batch in batches :
                 output = self.network(batch[:,:4])
