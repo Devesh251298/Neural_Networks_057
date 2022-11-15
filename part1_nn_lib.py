@@ -691,7 +691,7 @@ def example_main():
     net = MultiLayerNetwork(input_dim, neurons, activations)
 
     dat = np.loadtxt("iris.dat")
-
+    np.random.shuffle(dat)
     x = dat[:, :4]
     y = dat[:, 4:]
 
@@ -720,7 +720,6 @@ def example_main():
     trainer.train(x_train_pre, y_train)
     print("Train loss = ", trainer.eval_loss(x_train_pre, y_train))
     print("Validation loss = ", trainer.eval_loss(x_val_pre, y_val))
-
     preds = net(x_val_pre).argmax(axis=1).squeeze()
     targets = y_val.argmax(axis=1).squeeze()
     
