@@ -223,19 +223,13 @@ class LinearLayer(Layer):
         self.n_in = n_in
         self.n_out = n_out
 
-        #######################################################################
-        #                       ** START OF YOUR CODE **
-        #######################################################################
-        self._W = None
-        self._b = None
+        self._W = xavier_init(size=(n_in, n_out))
+        self._b = np.random.rand(1, n_out) - 0.5
 
         self._cache_current = None
         self._grad_W_current = None
         self._grad_b_current = None
 
-        #######################################################################
-        #                       ** END OF YOUR CODE **
-        #######################################################################
 
     def forward(self, x):
         """
@@ -250,14 +244,10 @@ class LinearLayer(Layer):
         Returns:
             {np.ndarray} -- Output array of shape (batch_size, n_out)
         """
-        #######################################################################
-        #                       ** START OF YOUR CODE **
-        #######################################################################
-        pass
 
-        #######################################################################
-        #                       ** END OF YOUR CODE **
-        #######################################################################
+        self._cache_current = (x, self._W, self._b)
+        
+        return np.dot(x, self._W) + self._b
 
     def backward(self, grad_z):
         """
@@ -273,15 +263,15 @@ class LinearLayer(Layer):
             {np.ndarray} -- Array containing gradient with respect to layer
                 input, of shape (batch_size, n_in).
         """
-        #######################################################################
-        #                       ** START OF YOUR CODE **
-        #######################################################################
-        pass
+        x_previous = self._cache_current[0]
+        W_previous = self._cache_current[1]
+        self._grad_W_current = np.dot( x_previous.T, grad_z)
+        self._grad_b_current = np.sum(grad_z, axis=1)
 
-        #######################################################################
-        #                       ** END OF YOUR CODE **
-        #######################################################################
+        return np.dot(grad_z, W_previous.T)
+        
 
+       
     def update_params(self, learning_rate):
         """
         Performs one step of gradient descent with given learning rate on the
@@ -290,14 +280,9 @@ class LinearLayer(Layer):
         Arguments:
             learning_rate {float} -- Learning rate of update step.
         """
-        #######################################################################
-        #                       ** START OF YOUR CODE **
-        #######################################################################
-        pass
-
-        #######################################################################
-        #                       ** END OF YOUR CODE **
-        #######################################################################
+        self._W -= learning_rate * self._grad_W_current
+        self._b -= learning_rate * self._grad_b_current
+        
 
 
 class MultiLayerNetwork(object):
@@ -636,4 +621,9 @@ def example_main():
 
 
 if __name__ == "__main__":
-    example_main()
+    # example_main()
+    inputs = np.ones((8, 3))
+    grad_loss_wrt_outputs = np.ones((8, 42))
+    layer = LinearLayer(n_in=3, n_out=42)
+    outputs = layer(inputs)
+    grad_loss_wrt_inputs = layer.backward(grad_z=grad_loss_wrt_outputs)
