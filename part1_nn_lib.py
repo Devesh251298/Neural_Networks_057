@@ -556,12 +556,11 @@ class Trainer(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
         dataset = np.append(input_dataset,target_dataset,axis=1)
-        if self.shuffle_flag:
-            dataset= self.shuffle(input_dataset, target_dataset)
-
-        batches = np.split(dataset, self.batch_size)
-        print(self.shuffle_flag)
         for epoch in range(self.nb_epoch):
+            if self.shuffle_flag:
+                dataset= self.shuffle(input_dataset, target_dataset)
+            batches = np.split(dataset, self.batch_size)
+            
             for batch in batches :
                 output = self.network(batch[:,:4])
                 if self.loss_fun == "mse":
