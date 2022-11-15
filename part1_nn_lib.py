@@ -120,7 +120,18 @@ class SigmoidLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        
+        """
+        Numpy sigmoid activation implementation
+        Arguments:
+        x - numpy array of any shape
+        Returns:
+        A - output of sigmoid(z), same shape as Z
+        cache -- returns Z as well, useful during backpropagation
+        """
+
+        self._cache_current=x
+        return 1/(1+np.exp(-x))
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -143,7 +154,23 @@ class SigmoidLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+
+        """
+        The backward propagation for a single SIGMOID unit.
+        Arguments:
+        grad_z - post-activation gradient, of any shape
+        Returns:
+        dZ - Gradient of the cost with respect to Z
+        """
+
+
+
+        sig=self.forward(self._cache_current)
+
+        #grad_z=dL/dh
+        return grad_z*sig*(1-sig)
+
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -177,7 +204,9 @@ class ReluLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        self._cache_current=x
+        """Apply elementwise ReLU to [batch, input_units] matrix"""
+        return np.maximum(0,x)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -200,7 +229,22 @@ class ReluLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+
+
+        """
+        The backward propagation for a single RELU unit.
+        Arguments:
+        grad_z - post-activation gradient, of any shape
+        Returns:
+        dZ - Gradient of the cost with respect to Z
+        """
+        dZ = np.array(grad_z, copy = True)
+        dZ[self._cache_current <= 0] = 0
+
+        # dZ[self._cache_current > 0] = 1
+   
+        return dZ
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -532,7 +576,8 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        self.col_max = data.max(axis=0)
+        self.col_min = data.min(axis=0)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -551,7 +596,14 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        # col_max = data.max(axis=0)
+        # col_min = data.min(axis=0)
+        np.seterr(divide='ignore', invalid='ignore')
+
+        normalized_data=(data-self.col_min)/(self.col_max-self.col_min)
+        normalized_data[np.isnan(normalized_data)] = 0
+
+        return normalized_data
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -570,7 +622,11 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        np.seterr(divide='ignore', invalid='ignore')
+
+        reverted_data=(data*(self.col_max-self.col_min))+self.col_min
+        reverted_data[np.isnan(reverted_data)] = 0
+        return reverted_data
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -601,6 +657,7 @@ def example_main():
     x_train_pre = prep_input.apply(x_train)
     x_val_pre = prep_input.apply(x_val)
 
+
     trainer = Trainer(
         network=net,
         batch_size=8,
@@ -621,9 +678,41 @@ def example_main():
 
 
 if __name__ == "__main__":
-    # example_main()
-    inputs = np.ones((8, 3))
-    grad_loss_wrt_outputs = np.ones((8, 42))
-    layer = LinearLayer(n_in=3, n_out=42)
-    outputs = layer(inputs)
-    grad_loss_wrt_inputs = layer.backward(grad_z=grad_loss_wrt_outputs)
+    example_main()
+
+    ##Linear layer
+    ## Start
+    # inputs = np.ones((8, 3))
+    # grad_loss_wrt_outputs = np.ones((8, 42))
+    # layer = LinearLayer(n_in=3, n_out=42)
+    # outputs = layer(inputs)
+    # grad_loss_wrt_inputs = layer.backward(grad_z=grad_loss_wrt_outputs)
+    ## End
+
+
+    ##Testing the Preprocessor
+    ##Start
+    # print(f' ----Testing the Preprocessor----')
+
+    # dat = np.loadtxt("iris.dat")
+    # x = dat[:, :4]
+    # y = dat[:, 4:]
+
+    # split_idx = 5
+
+    # x_train = x[:split_idx]
+    # y_train = y[:split_idx]
+    # x_val = x[split_idx:]
+    # y_val = y[split_idx:]
+
+    # prep_input = Preprocessor(x_train)
+
+    # x_train_pre = prep_input.apply(x_train)
+
+
+    # print(f' normalized training data \n {x_train_pre}')
+    # x_train_pre_revert = prep_input.revert(x_train_pre)
+    # print(f' revert normalized training data \n {x_train_pre_revert}')
+    # test_normalization=prep_input.revert(prep_input.apply(x_train))
+    # print(f' normalized training data (embed) \n {test_normalization}')
+    # #End test preprocessor
