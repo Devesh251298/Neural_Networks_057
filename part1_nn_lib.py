@@ -527,12 +527,15 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        if len(np.shape(input_dataset)) == 1:
-            input_dataset = np.reshape(input_dataset,(np.shape(input_dataset)[0],1))
-        dataset = np.append(input_dataset,target_dataset,axis=1)
-        np.random.shuffle(dataset)
-        input_shape = np.shape(input_dataset)[1]
-        return dataset[:,:input_shape], dataset[:,input_shape:]
+        try:
+            if len(np.shape(input_dataset)) == 1:
+                input_dataset = np.reshape(input_dataset,(np.shape(input_dataset)[0],1))
+            dataset = np.append(input_dataset,target_dataset,axis=1)
+            np.random.shuffle(dataset)
+            input_shape = np.shape(input_dataset)[1]
+            return dataset[:,:input_shape], dataset[:,input_shape:]
+        except Exception:
+            traceback.print_exc()
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -612,17 +615,21 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        if len(np.shape(input_dataset)) == 1:
-            input_dataset = np.reshape(input_dataset,(np.shape(input_dataset)[0],1))
+        try:
+            if len(np.shape(input_dataset)) == 1:
+                input_dataset = np.reshape(input_dataset,(np.shape(input_dataset)[0],1))
 
-        if self.loss_fun == "mse":
-            loss_f = CrossEntropyLossLayer()
-        else:
-            loss_f = MSELossLayer()
+            if self.loss_fun == "mse":
+                loss_f = CrossEntropyLossLayer()
+            else:
+                loss_f = MSELossLayer()
 
-        loss = loss_f.forward(self.network(input_dataset), target_dataset)
+            loss = loss_f.forward(self.network(input_dataset), target_dataset)
 
-        return loss
+            return loss
+
+        except Exception:
+            traceback.print_exc()
 
         #######################################################################
         #                       ** END OF YOUR CODE **
