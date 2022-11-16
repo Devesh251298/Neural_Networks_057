@@ -530,7 +530,8 @@ class Trainer(object):
             input_dataset = np.reshape(input_dataset,(np.shape(input_dataset)[0],1))
         dataset = np.append(input_dataset,target_dataset,axis=1)
         np.random.shuffle(dataset)
-        return dataset
+        input_shape = np.shape(input_dataset)[1]
+        return dataset[:,:input_shape], dataset[:,input_shape:]
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -568,7 +569,8 @@ class Trainer(object):
 
         for epoch in range(self.nb_epoch):
             if self.shuffle_flag:
-                dataset= self.shuffle(input_dataset, target_dataset)
+                shuffled_inputs, shuffled_targets = self.shuffle(input_dataset, target_dataset)
+                dataset= np.append(shuffled_inputs, shuffled_targets,axis=1)
             batches = np.split(dataset, self.batch_size)
             
             for batch in batches :
@@ -697,14 +699,14 @@ class Preprocessor(object):
 
 
 def example_main():
-    input_dim = 4
+    input_dim = 1
     neurons = [16, 3]
     activations = ["relu", "identity"]
     net = MultiLayerNetwork(input_dim, neurons, activations)
 
     dat = np.loadtxt("iris.dat")
     np.random.shuffle(dat)
-    x = dat[:,:4]
+    x = dat[:,0]
 
     y = dat[:, 4:]
 
