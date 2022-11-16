@@ -641,6 +641,15 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+
+        #clean the data
+        col_median =np.nanmedian(data,axis=0)
+
+
+        inds = np.where(np.isnan(data))
+        # #Place column means in the indices. Align the arrays using take
+        data[inds] = np.take(col_median, inds[1])
+
         self.col_max = data.max(axis=0)
         self.col_min = data.min(axis=0)
 
@@ -699,14 +708,14 @@ class Preprocessor(object):
 
 
 def example_main():
-    input_dim = 1
+    input_dim = 4
     neurons = [16, 3]
     activations = ["relu", "identity"]
     net = MultiLayerNetwork(input_dim, neurons, activations)
 
     dat = np.loadtxt("iris.dat")
     np.random.shuffle(dat)
-    x = dat[:,0]
+    x = dat[:, :4] 
 
     y = dat[:, 4:]
 
@@ -749,25 +758,28 @@ def example_main():
 if __name__ == "__main__":
     example_main()
 
-    ##Linear layer
-    ## Start
+    #Linear layer
+    # # Start
     # inputs = np.ones((8, 3))
     # grad_loss_wrt_outputs = np.ones((8, 42))
     # layer = LinearLayer(n_in=3, n_out=42)
     # outputs = layer(inputs)
     # grad_loss_wrt_inputs = layer.backward(grad_z=grad_loss_wrt_outputs)
-    ## End
+    # # End
 
 
-    ##Testing the Preprocessor
-    ##Start
+    #Testing the Preprocessor
+    # #Start
     # print(f' ----Testing the Preprocessor----')
 
+
     # dat = np.loadtxt("iris.dat")
+    # np.random.shuffle(dat)
+
     # x = dat[:, :4]
     # y = dat[:, 4:]
 
-    # split_idx = 5
+    # split_idx = int(0.8 * len(x))#5
 
     # x_train = x[:split_idx]
     # y_train = y[:split_idx]
@@ -784,4 +796,4 @@ if __name__ == "__main__":
     # print(f' revert normalized training data \n {x_train_pre_revert}')
     # test_normalization=prep_input.revert(prep_input.apply(x_train))
     # print(f' normalized training data (embed) \n {test_normalization}')
-    # #End test preprocessor
+    #End test preprocessor
