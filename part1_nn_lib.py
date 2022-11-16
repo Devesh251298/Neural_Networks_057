@@ -389,6 +389,8 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+        if len(np.shape(x)) == 1:
+            x = np.reshape(x,(np.shape(x)[0],1))
         y = x
         # propagate x forward through the network
         for layer in self._layers:
@@ -524,10 +526,7 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        if len(np.shape(input_dataset)) == 1:
-            dataset = np.append(np.reshape(input_dataset,(np.shape(input_dataset)[0],1)),target_dataset,axis=1)
-        else :
-            dataset = np.append(input_dataset,target_dataset,axis=1)
+        dataset = np.append(input_dataset,target_dataset,axis=1)
         np.random.shuffle(dataset)
         return dataset
 
@@ -558,24 +557,26 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+        
         if len(np.shape(input_dataset)) == 1:
-            print(np.reshape(input_dataset,(np.shape(input_dataset)[0],1)))
-            dataset = np.append(np.reshape(input_dataset,(np.shape(input_dataset)[0],1)),target_dataset,axis=1)
-        else :
-            dataset = np.append(input_dataset,target_dataset,axis=1)
+            input_dataset = np.reshape(input_dataset,(np.shape(input_dataset)[0],1))
+                
+        dataset = np.append(input_dataset, target_dataset,axis=1)  
+        input_shape = np.shape(input_dataset)[1]
+
         for epoch in range(self.nb_epoch):
             if self.shuffle_flag:
                 dataset= self.shuffle(input_dataset, target_dataset)
             batches = np.split(dataset, self.batch_size)
             
             for batch in batches :
-                output = self.network(batch[:,:4])
+                output = self.network(batch[:,:input_shape])
                 if self.loss_fun == "mse":
                     loss_f = CrossEntropyLossLayer()
                 else:
                     loss_f = MSELossLayer()
 
-                loss = loss_f.forward(output, batch[:,4:])
+                loss = loss_f.forward(output, batch[:,input_shape:])
                 grad_z = loss_f.backward()
                 self.network.backward(grad_z)
                 self.network.update_params(self.learning_rate)
@@ -601,6 +602,9 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+        if len(np.shape(input_dataset)) == 1:
+            input_dataset = np.reshape(input_dataset,(np.shape(input_dataset)[0],1))
+
         if self.loss_fun == "mse":
             loss_f = CrossEntropyLossLayer()
         else:
@@ -691,18 +695,16 @@ class Preprocessor(object):
 
 
 def example_main():
-    input_dim = 1
+    input_dim = 4
     neurons = [16, 3]
     activations = ["relu", "identity"]
     net = MultiLayerNetwork(input_dim, neurons, activations)
 
     dat = np.loadtxt("iris.dat")
     np.random.shuffle(dat)
-    x = dat[:,0]
+    x = dat[:,:4]
 
     y = dat[:, 4:]
-
-    print(len(np.shape(x)))
 
     split_idx = int(0.8 * len(x))
 
@@ -727,8 +729,12 @@ def example_main():
     )
 
     trainer.train(x_train_pre, y_train)
+
     print("Train loss = ", trainer.eval_loss(x_train_pre, y_train))
     print("Validation loss = ", trainer.eval_loss(x_val_pre, y_val))
+
+
+
     preds = net(x_val_pre).argmax(axis=1).squeeze()
     targets = y_val.argmax(axis=1).squeeze()
     
