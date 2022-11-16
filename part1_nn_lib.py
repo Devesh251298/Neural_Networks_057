@@ -574,7 +574,7 @@ class Trainer(object):
                 if self.shuffle_flag:
                     shuffled_inputs, shuffled_targets = self.shuffle(input_dataset, target_dataset)
                     dataset= np.append(shuffled_inputs, shuffled_targets,axis=1)
-                batches = np.split(dataset, self.batch_size)
+                batches = np.array_split(dataset, self.batch_size)
                 
                 for batch in batches :
                     output = self.network(batch[:,:input_shape])
