@@ -526,6 +526,8 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+        if len(np.shape(input_dataset)) == 1:
+            input_dataset = np.reshape(input_dataset,(np.shape(input_dataset)[0],1))
         dataset = np.append(input_dataset,target_dataset,axis=1)
         np.random.shuffle(dataset)
         return dataset
