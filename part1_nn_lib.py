@@ -1,5 +1,6 @@
 import numpy as np
 import pickle
+import traceback
 
 
 def xavier_init(size, gain = 1.0):
@@ -561,29 +562,34 @@ class Trainer(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
         
-        if len(np.shape(input_dataset)) == 1:
-            input_dataset = np.reshape(input_dataset,(np.shape(input_dataset)[0],1))
+
+        try:
+            if len(np.shape(input_dataset)) == 1:
+                input_dataset = np.reshape(input_dataset,(np.shape(input_dataset)[0],1))
+                    
+            dataset = np.append(input_dataset, target_dataset,axis=1)  
+            input_shape = np.shape(input_dataset)[1]
+
+            for epoch in range(self.nb_epoch):
+                if self.shuffle_flag:
+                    shuffled_inputs, shuffled_targets = self.shuffle(input_dataset, target_dataset)
+                    dataset= np.append(shuffled_inputs, shuffled_targets,axis=1)
+                batches = np.split(dataset, self.batch_size)
                 
-        dataset = np.append(input_dataset, target_dataset,axis=1)  
-        input_shape = np.shape(input_dataset)[1]
+                for batch in batches :
+                    output = self.network(batch[:,:input_shape])
+                    if self.loss_fun == "mse":
+                        loss_f = CrossEntropyLossLayer()
+                    else:
+                        loss_f = MSELossLayer()
 
-        for epoch in range(self.nb_epoch):
-            if self.shuffle_flag:
-                shuffled_inputs, shuffled_targets = self.shuffle(input_dataset, target_dataset)
-                dataset= np.append(shuffled_inputs, shuffled_targets,axis=1)
-            batches = np.split(dataset, self.batch_size)
-            
-            for batch in batches :
-                output = self.network(batch[:,:input_shape])
-                if self.loss_fun == "mse":
-                    loss_f = CrossEntropyLossLayer()
-                else:
-                    loss_f = MSELossLayer()
+                    loss = loss_f.forward(output, batch[:,input_shape:])
+                    grad_z = loss_f.backward()
+                    self.network.backward(grad_z)
+                    self.network.update_params(self.learning_rate)
 
-                loss = loss_f.forward(output, batch[:,input_shape:])
-                grad_z = loss_f.backward()
-                self.network.backward(grad_z)
-                self.network.update_params(self.learning_rate)
+        except Exception:
+            traceback.print_exc()
 
         #######################################################################
         #                       ** END OF YOUR CODE **
