@@ -1,6 +1,8 @@
 import numpy as np
 import pickle
 import traceback
+from numpy.random import default_rng
+
 
 
 def xavier_init(size, gain = 1.0):
@@ -532,10 +534,10 @@ class Trainer(object):
                 input_dataset = np.reshape(input_dataset,(np.shape(input_dataset)[0],1))
             if len(np.shape(target_dataset)) == 1:
                 target_dataset = np.reshape(target_dataset,(np.shape(target_dataset)[0],1))
-            dataset = np.append(input_dataset,target_dataset,axis=1)
-            dataset = np.random.RandomState(seed=42).permutation(dataset)
-            input_shape = np.shape(input_dataset)[1]
-            return dataset[:,:input_shape], dataset[:,input_shape:]
+            seed = 60012
+            rg = default_rng(seed)
+            shuffled_indices = rg.permutation(len(input_dataset))
+            return input_dataset[shuffled_indices], target_dataset[shuffled_indices]
         except Exception:
             traceback.print_exc()
 
