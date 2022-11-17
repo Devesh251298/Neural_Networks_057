@@ -4,7 +4,6 @@ import traceback
 from numpy.random import default_rng
 
 
-
 def xavier_init(size, gain = 1.0):
     """
     Xavier initialization of network weights.
@@ -529,17 +528,17 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        try:
-            if len(np.shape(input_dataset)) == 1:
-                input_dataset = np.reshape(input_dataset,(np.shape(input_dataset)[0],1))
-            if len(np.shape(target_dataset)) == 1:
-                target_dataset = np.reshape(target_dataset,(np.shape(target_dataset)[0],1))
-            seed = 60012
-            rg = default_rng(seed)
-            shuffled_indices = rg.permutation(len(input_dataset))
-            return input_dataset[shuffled_indices], target_dataset[shuffled_indices]
-        except Exception:
-            traceback.print_exc()
+        assert input_dataset.shape[0] == target_dataset.shape[0], f'The number of x instances should match y instances'
+        if len(np.shape(input_dataset)) == 1:
+            input_dataset = np.reshape(input_dataset,(np.shape(input_dataset)[0],1))
+        if len(np.shape(target_dataset)) == 1:
+            target_dataset = np.reshape(target_dataset,(np.shape(target_dataset)[0],1))
+        seed = 60012
+        rg = default_rng(seed)
+        shuffled_indices = rg.permutation(input_dataset.shape[0])
+        return input_dataset[shuffled_indices], target_dataset[shuffled_indices]
+        # except Exception:
+            # traceback.print_exc()
 
         #######################################################################
         #                       ** END OF YOUR CODE **
