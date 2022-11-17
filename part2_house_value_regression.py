@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 from torch.autograd import Variable
 from sklearn.impute import SimpleImputer
+from sklearn.metrics import mean_squared_error
+
 pd.options.mode.chained_assignment = None
 class Regressor():
 
@@ -174,8 +176,8 @@ class Regressor():
         X, Y = self._preprocessor(x, y = y, training = True) # Do not forget
         
         # Transform numpy arrays into tensors
-        X = Variable(torch.from_numpy(X).type(dtype=torch.FloatTensor))
-        Y = Variable(torch.from_numpy(Y).type(dtype=torch.FloatTensor))
+        X = Variable(torch.from_numpy(X).type(dtype=torch.float32 ))
+        Y = Variable(torch.from_numpy(Y).type(dtype=torch.float32 ))
         for epoch in range(self.nb_epoch):
             
             # Compute a forward pass
@@ -212,13 +214,18 @@ class Regressor():
 
         """
 
+
+
+
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        X, _ = self._preprocessor(x, training = False) # Do not forget
-        pass
+        # X, _ = self._preprocessor(x, training = False) # Do not forget
 
+        x = Variable(torch.from_numpy(x).type(dtype=torch.float32 ))
+        output = self.linear_model(x)
+        return output.detach().numpy()
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -241,8 +248,10 @@ class Regressor():
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        X, Y = self._preprocessor(x, y = y, training = False) # Do not forget
-        return 0 # Replace this code with your own
+        X, Y = self._preprocessor(x, y, training = False) # Do not forget
+        y_model = self.predict(X)        
+        
+        return mean_squared_error(Y, y_model) # Replace this code with your own
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -314,13 +323,14 @@ def example_main():
     # This example trains on the whole available dataset. 
     # You probably want to separate some held-out data 
     # to make sure the model isn't overfitting
-    regressor = Regressor(x_train, nb_epoch = 10)
+    regressor = Regressor(x_train, nb_epoch = 1000)
 
 
     regressor.fit(x_train, y_train)
     save_regressor(regressor)
 
     # Error
+    print(x_train.shape)
     error = regressor.score(x_train, y_train)
     print("\nRegressor error: {}\n".format(error))
 
