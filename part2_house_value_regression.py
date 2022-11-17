@@ -2,7 +2,7 @@ import torch
 import pickle
 import numpy as np
 import pandas as pd
-
+from torch.autograd import Variable
 from sklearn.impute import SimpleImputer
 pd.options.mode.chained_assignment = None
 class Regressor():
@@ -26,11 +26,16 @@ class Regressor():
         #######################################################################
 
         # Replace this code with your own
-        X,_ = self._preprocessor(x, training = True)
+        X, _ = self._preprocessor(x, training = True)
         self.input_size = X.shape[1]
         self.output_size = 1
         self.nb_epoch = nb_epoch 
-        self.median_train_dict=dict() #stores all median values for training data.
+        self.median_train_dict=dict() # Stores all median values for training data.
+        self.learning_rate = 0.0001
+        self.linear_model = torch.nn.Linear(self.input_size, self.output_size)
+        self.mse_loss = torch.nn.MSELoss()
+        self.optimiser = torch.optim.SGD(self.linear_model.parameters(), lr = self.learning_rate) 
+
         return 
 
         #######################################################################
@@ -39,9 +44,6 @@ class Regressor():
 
 
     def _preprocessor(self, x, y = None, training = False):
-
- 
-
             """ 
             Preprocess input of the network.
 
@@ -168,8 +170,28 @@ class Regressor():
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-
+     
         X, Y = self._preprocessor(x, y = y, training = True) # Do not forget
+        
+        # Transform numpy arrays into tensors
+        X = Variable(torch.from_numpy(X).type(dtype=torch.FloatTensor))
+        Y = Variable(torch.from_numpy(Y).type(dtype=torch.FloatTensor))
+        for epoch in range(self.nb_epoch):
+            
+            # Compute a forward pass
+            output = self.linear_model(X) 
+
+            # Compute MSE based on forward pass
+            loss_forward = self.mse_loss(output, Y)
+          
+            # Perform backward pass 
+            loss_forward.backward()
+
+            # Update parameters of the model
+            self.optimiser.step()
+
+            print('epoch {}'.format(epoch))
+
         return self
 
         #######################################################################
