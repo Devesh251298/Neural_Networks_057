@@ -569,6 +569,8 @@ class Trainer(object):
         try:
             if len(np.shape(input_dataset)) == 1:
                 input_dataset = np.reshape(input_dataset,(np.shape(input_dataset)[0],1))
+            if len(np.shape(target_dataset)) == 1:
+                target_dataset = np.reshape(target_dataset,(np.shape(target_dataset)[0],1))
                     
             dataset = np.append(input_dataset, target_dataset,axis=1)  
             input_shape = np.shape(input_dataset)[1]
