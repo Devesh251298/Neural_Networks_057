@@ -36,7 +36,7 @@ class Regressor():
         self.output_size = 1
         self.nb_epoch = nb_epoch 
         self.median_train_dict=dict() # Stores all median values for training data.
-        self.learning_rate = 0.001
+        self.learning_rate = 0.01
         self.linear_model = torch.nn.Linear(self.input_size, self.output_size)
         self.mse_loss = torch.nn.MSELoss()
         self.optimiser = torch.optim.SGD(self.linear_model.parameters(), lr = self.learning_rate) 
@@ -219,17 +219,13 @@ class Regressor():
             {np.ndarray} -- Predicted value for the given input (batch_size, 1).
 
         """
-
-
-
-
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
 
         # X, _ = self._preprocessor(x, training = False) # Do not forget
         try : 
-            x = Variable(torch.tensor(x.values).type(dtype=torch.float32))
+            x = Variable(torch.from_numpy(x.values).type(dtype=torch.float32))
             output = self.linear_model(x)
             return output.detach().numpy()
 
@@ -261,6 +257,7 @@ class Regressor():
             y_model = self.predict(pd.DataFrame(X))        
             
             return mean_squared_error(Y, y_model, squared=False) # Replace this code with your own
+ 
         except Exception:
             traceback.print_exc()
         #######################################################################
@@ -340,7 +337,7 @@ def example_main():
     # This example trains on the whole available dataset. 
     # You probably want to separate some held-out data 
     # to make sure the model isn't overfitting
-    regressor = Regressor(x_train, nb_epoch = 3000)
+    regressor = Regressor(x_train, nb_epoch = 30000)
 
 
     regressor.fit(x_train, y_train)
