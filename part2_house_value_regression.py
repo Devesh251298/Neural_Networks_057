@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from torch.autograd import Variable
 from sklearn.impute import SimpleImputer
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, r2_score
 import traceback
 
 
@@ -229,7 +229,7 @@ class Regressor():
 
         # X, _ = self._preprocessor(x, training = False) # Do not forget
         try : 
-            x = Variable(torch.from_numpy(x).type(dtype=torch.float32 ))
+            x = Variable(torch.tensor(x.values).type(dtype=torch.float32))
             output = self.linear_model(x)
             return output.detach().numpy()
 
@@ -258,9 +258,9 @@ class Regressor():
         #######################################################################
         try :
             X, Y = self._preprocessor(x, y, training = False) # Do not forget
-            y_model = self.predict(X)        
+            y_model = self.predict(pd.DataFrame(X))        
             
-            return mean_squared_error(Y, y_model) # Replace this code with your own
+            return mean_squared_error(Y, y_model, squared=False) # Replace this code with your own
         except Exception:
             traceback.print_exc()
         #######################################################################
