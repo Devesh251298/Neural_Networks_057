@@ -5,6 +5,8 @@ import pandas as pd
 from torch.autograd import Variable
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import mean_squared_error
+import traceback
+
 
 pd.options.mode.chained_assignment = None
 class Regressor():
@@ -28,17 +30,17 @@ class Regressor():
         #######################################################################
 
         # Replace this code with your own
+
         X, _ = self._preprocessor(x, training = True)
         self.input_size = X.shape[1]
         self.output_size = 1
         self.nb_epoch = nb_epoch 
         self.median_train_dict=dict() # Stores all median values for training data.
-        self.learning_rate = 0.0001
+        self.learning_rate = 0.001
         self.linear_model = torch.nn.Linear(self.input_size, self.output_size)
         self.mse_loss = torch.nn.MSELoss()
         self.optimiser = torch.optim.SGD(self.linear_model.parameters(), lr = self.learning_rate) 
 
-        return 
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -70,86 +72,88 @@ class Regressor():
             # Replace this code with your own
             # Return preprocessed x and y, return None for y if it was None
 
+            try :
+                if training==True:
+                    # Replace all x Nan with median
+                    x_columns=x.select_dtypes(include=['float']).columns
+                    self.median_train_dict=dict()
 
-            if training==True:
-                # Replace all x Nan with median
-                x_columns=x.select_dtypes(include=['float']).columns
-                self.median_train_dict=dict()
+                    def replace_NA(df,column_name):
+                        median_col=df[column_name].median()
+                        self.median_train_dict[column_name]=median_col
+                        df[column_name].fillna(median_col,inplace=True)
 
-                def replace_NA(df,column_name):
-                    median_col=df[column_name].median()
-                    self.median_train_dict[column_name]=median_col
-                    df[column_name].fillna(median_col,inplace=True)
-
-                    return df.isnull().sum()
+                        return df.isnull().sum()
 
 
-                for column in x_columns:
-                    replace_NA(x,column)
+                    for column in x_columns:
+                        replace_NA(x,column)
+                        
+                    # Replace all x 'object' types Nan with median
+                    # imp = SimpleImputer(missing_values='NAN', strategy='most_frequent', fill_value=None)
+                    # new_col=imp.fit_transform(np.array(x['ocean_proximity']).reshape(-1, 1))
+
+                    # x['ocean_proximity']=new_col
+                    most_freq_cat=x['ocean_proximity'].value_counts()[0]#.to_frame()
+                    self.median_train_dict['ocean_proximity']=most_freq_cat
+              
+                    x['ocean_proximity'].fillna(most_freq_cat,inplace=True)
+
                     
-                # Replace all x 'object' types Nan with median
-                # imp = SimpleImputer(missing_values='NAN', strategy='most_frequent', fill_value=None)
-                # new_col=imp.fit_transform(np.array(x['ocean_proximity']).reshape(-1, 1))
+                    # Replace all y Nan with median
+                    if y is None:
+                        pass
+                    else:
+                        y_columns=y.columns
+                        median_col_y=y["median_house_value"].median()
+                        self.median_train_dict["median_house_value"]=median_col_y
+                        y["median_house_value"].fillna(median_col_y,inplace=True)
+                        y=y.to_numpy()
 
-                # x['ocean_proximity']=new_col
-                most_freq_cat=x['ocean_proximity'].value_counts()[0]#.to_frame()
-                self.median_train_dict['ocean_proximity']=most_freq_cat
-          
-                x['ocean_proximity'].fillna(most_freq_cat,inplace=True)
-
-                
-                # Replace all y Nan with median
-                if y is None:
-                    pass
-                else:
-                    y_columns=y.columns
-                    median_col_y=y["median_house_value"].median()
-                    self.median_train_dict["median_house_value"]=median_col_y
-                    y["median_house_value"].fillna(median_col_y,inplace=True)
-                    y=y.to_numpy()
-
-                #Convert all the clean data to numerical data
-                one_hot_encoded_data=pd.get_dummies(x, columns = ['ocean_proximity'])
-                
-                #Normalize all the clean data
-                x=(one_hot_encoded_data-one_hot_encoded_data.min())/(one_hot_encoded_data.max()-one_hot_encoded_data.min())
-
-
-                
-            else: #if data is test data
-                
-                x_columns=x.select_dtypes(include=['float']).columns
-                # Replace all x Nan with median
-                def replace_NA(df,column_name):
-                    df[column_name].fillna(self.median_train_dict[column_name],inplace=True)
-
-                    return df.isnull().sum()
-
-
-                for column in x_columns:
-                    replace_NA(x,column)
-                
-                # Replace all x 'object' types Nan with median
-                x["ocean_proximity"].fillna(self.median_train_dict['ocean_proximity'],inplace=True)
-                if y is None:
-                    pass
-                else:
+                    #Convert all the clean data to numerical data
+                    one_hot_encoded_data=pd.get_dummies(x, columns = ['ocean_proximity'])
                     
-                    y_columns=y.columns
-                    y["median_house_value"].fillna(self.median_train_dict["median_house_value"],inplace=True)
-                    y=y.to_numpy()
-                
-                #Convert all the clean data to numerical data
-                one_hot_encoded_data=pd.get_dummies(x, columns = ['ocean_proximity'])
-                
-                #Normalize all the clean data
-                x=(one_hot_encoded_data-one_hot_encoded_data.min())/(one_hot_encoded_data.max()-one_hot_encoded_data.min())         
-                
+                    #Normalize all the clean data
+                    x=(one_hot_encoded_data-one_hot_encoded_data.min())/(one_hot_encoded_data.max()-one_hot_encoded_data.min())
 
-            x=x.to_numpy()
-            
-            return x, (y if isinstance(y, (np.ndarray, np.generic,pd.DataFrame)) else None)
 
+                    
+                else: #if data is test data
+                    
+                    x_columns=x.select_dtypes(include=['float']).columns
+                    # Replace all x Nan with median
+                    def replace_NA(df,column_name):
+                        df[column_name].fillna(self.median_train_dict[column_name],inplace=True)
+
+                        return df.isnull().sum()
+
+
+                    for column in x_columns:
+                        replace_NA(x,column)
+                    
+                    # Replace all x 'object' types Nan with median
+                    x["ocean_proximity"].fillna(self.median_train_dict['ocean_proximity'],inplace=True)
+                    if y is None:
+                        pass
+                    else:
+                        
+                        y_columns=y.columns
+                        y["median_house_value"].fillna(self.median_train_dict["median_house_value"],inplace=True)
+                        y=y.to_numpy()
+                    
+                    #Convert all the clean data to numerical data
+                    one_hot_encoded_data=pd.get_dummies(x, columns = ['ocean_proximity'])
+                    
+                    #Normalize all the clean data
+                    x=(one_hot_encoded_data-one_hot_encoded_data.min())/(one_hot_encoded_data.max()-one_hot_encoded_data.min())         
+                    
+
+                x=x.to_numpy()
+                
+                return x, (y if isinstance(y, (np.ndarray, np.generic,pd.DataFrame)) else None)
+
+            except Exception:
+                traceback.print_exc()
             #######################################################################
             #                       ** END OF YOUR CODE **
             #######################################################################
@@ -172,30 +176,32 @@ class Regressor():
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-     
-        X, Y = self._preprocessor(x, y = y, training = True) # Do not forget
-        
-        # Transform numpy arrays into tensors
-        X = Variable(torch.from_numpy(X).type(dtype=torch.float32 ))
-        Y = Variable(torch.from_numpy(Y).type(dtype=torch.float32 ))
-        for epoch in range(self.nb_epoch):
+        try : 
+            X, Y = self._preprocessor(x, y = y, training = True) # Do not forget
             
-            # Compute a forward pass
-            output = self.linear_model(X) 
+            # Transform numpy arrays into tensors
+            X = Variable(torch.from_numpy(X).type(dtype=torch.float32 ))
+            Y = Variable(torch.from_numpy(Y).type(dtype=torch.float32 ))
+            for epoch in range(self.nb_epoch):
+                
+                # Compute a forward pass
+                output = self.linear_model(X) 
 
-            # Compute MSE based on forward pass
-            loss_forward = self.mse_loss(output, Y)
-          
-            # Perform backward pass 
-            loss_forward.backward()
+                # Compute MSE based on forward pass
+                loss_forward = self.mse_loss(output, Y)
+              
+                # Perform backward pass 
+                loss_forward.backward()
 
-            # Update parameters of the model
-            self.optimiser.step()
+                # Update parameters of the model
+                self.optimiser.step()
 
-            print('epoch {}'.format(epoch))
+                # print('epoch {}'.format(epoch), loss_forward.item())
 
-        return self
+            return self
 
+        except Exception:
+            traceback.print_exc()
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -222,10 +228,13 @@ class Regressor():
         #######################################################################
 
         # X, _ = self._preprocessor(x, training = False) # Do not forget
+        try : 
+            x = Variable(torch.from_numpy(x).type(dtype=torch.float32 ))
+            output = self.linear_model(x)
+            return output.detach().numpy()
 
-        x = Variable(torch.from_numpy(x).type(dtype=torch.float32 ))
-        output = self.linear_model(x)
-        return output.detach().numpy()
+        except Exception:
+            traceback.print_exc()
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -247,12 +256,13 @@ class Regressor():
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-
-        X, Y = self._preprocessor(x, y, training = False) # Do not forget
-        y_model = self.predict(X)        
-        
-        return mean_squared_error(Y, y_model) # Replace this code with your own
-
+        try :
+            X, Y = self._preprocessor(x, y, training = False) # Do not forget
+            y_model = self.predict(X)        
+            
+            return mean_squared_error(Y, y_model) # Replace this code with your own
+        except Exception:
+            traceback.print_exc()
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -263,9 +273,12 @@ def save_regressor(trained_model):
     Utility function to save the trained regressor model in part2_model.pickle.
     """
     # If you alter this, make sure it works in tandem with load_regressor
-    with open('part2_model.pickle', 'wb') as target:
-        pickle.dump(trained_model, target)
-    print("\nSaved model in part2_model.pickle\n")
+    try : 
+        with open('part2_model.pickle', 'wb') as target:
+            pickle.dump(trained_model, target)
+        print("\nSaved model in part2_model.pickle\n")
+    except Exception:
+        traceback.print_exc()
 
 
 def load_regressor(): 
@@ -273,10 +286,14 @@ def load_regressor():
     Utility function to load the trained regressor model in part2_model.pickle.
     """
     # If you alter this, make sure it works in tandem with save_regressor
-    with open('part2_model.pickle', 'rb') as target:
-        trained_model = pickle.load(target)
-    print("\nLoaded model in part2_model.pickle\n")
-    return trained_model
+    try : 
+        with open('part2_model.pickle', 'rb') as target:
+            trained_model = pickle.load(target)
+        print("\nLoaded model in part2_model.pickle\n")
+        return trained_model
+    
+    except Exception:
+        traceback.print_exc()
 
 
 
@@ -323,7 +340,7 @@ def example_main():
     # This example trains on the whole available dataset. 
     # You probably want to separate some held-out data 
     # to make sure the model isn't overfitting
-    regressor = Regressor(x_train, nb_epoch = 1000)
+    regressor = Regressor(x_train, nb_epoch = 3000)
 
 
     regressor.fit(x_train, y_train)
