@@ -102,7 +102,8 @@ class Regressor():
                     median_col_y=y["median_house_value"].median()
                     self.median_train_dict["median_house_value"]=median_col_y
                     y["median_house_value"].fillna(median_col_y,inplace=True)
-                
+                    y=y.to_numpy()
+
                 #Convert all the clean data to numerical data
                 one_hot_encoded_data=pd.get_dummies(x, columns = ['ocean_proximity'])
                 
@@ -132,6 +133,7 @@ class Regressor():
                     
                     y_columns=y.columns
                     y["median_house_value"].fillna(self.median_train_dict["median_house_value"],inplace=True)
+                    y=y.to_numpy()
                 
                 #Convert all the clean data to numerical data
                 one_hot_encoded_data=pd.get_dummies(x, columns = ['ocean_proximity'])
@@ -139,11 +141,10 @@ class Regressor():
                 #Normalize all the clean data
                 x=(one_hot_encoded_data-one_hot_encoded_data.min())/(one_hot_encoded_data.max()-one_hot_encoded_data.min())         
                 
+
+            x=x.to_numpy()
             
-
-
-            # print(self.median_train_dict)
-            return x, (y if isinstance(y, pd.DataFrame) else None)
+            return x, (y if isinstance(y, (np.ndarray, np.generic,pd.DataFrame)) else None)
 
             #######################################################################
             #                       ** END OF YOUR CODE **
@@ -292,6 +293,8 @@ def example_main():
     # You probably want to separate some held-out data 
     # to make sure the model isn't overfitting
     regressor = Regressor(x_train, nb_epoch = 10)
+
+
     regressor.fit(x_train, y_train)
     save_regressor(regressor)
 
@@ -302,4 +305,8 @@ def example_main():
 
 if __name__ == "__main__":
     example_main()
+
+    #Testing preprocessor
+    # x_pre_proc,y_pre_proc=regressor._preprocessor(x_train,y_train,training=True)
+    # print(f' x type = {type(x_pre_proc)},y type = {type(y_pre_proc)}')
 
