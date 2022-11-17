@@ -533,7 +533,7 @@ class Trainer(object):
             if len(np.shape(target_dataset)) == 1:
                 target_dataset = np.reshape(target_dataset,(np.shape(target_dataset)[0],1))
             dataset = np.append(input_dataset,target_dataset,axis=1)
-            np.random.shuffle(dataset)
+            dataset = np.random.permutation(dataset)
             input_shape = np.shape(input_dataset)[1]
             return dataset[:,:input_shape], dataset[:,input_shape:]
         except Exception:
