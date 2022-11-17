@@ -3,6 +3,8 @@ import pickle
 import numpy as np
 import pandas as pd
 
+from sklearn.impute import SimpleImputer
+pd.options.mode.chained_assignment = None
 class Regressor():
 
     def __init__(self, x, nb_epoch = 1000):
@@ -24,46 +26,128 @@ class Regressor():
         #######################################################################
 
         # Replace this code with your own
-        X, _ = self._preprocessor(x, training = True)
+        X,_ = self._preprocessor(x, training = True)
         self.input_size = X.shape[1]
         self.output_size = 1
         self.nb_epoch = nb_epoch 
-        return
+        self.median_train_dict=dict() #stores all median values for training data.
+        return 
 
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
+
 
     def _preprocessor(self, x, y = None, training = False):
-        """ 
-        Preprocess input of the network.
+
+ 
+
+            """ 
+            Preprocess input of the network.
+
+            Arguments:
+                - x {pd.DataFrame} -- Raw input array of shape 
+                    (batch_size, input_size).
+                - y {pd.DataFrame} -- Raw target array of shape (batch_size, 1).
+                - training {boolean} -- Boolean indicating if we are training or 
+                    testing the model.
+
+            Returns:
+                - {torch.tensor} or {numpy.ndarray} -- Preprocessed input array of
+                  size (batch_size, input_size). The input_size does not have to be the same as the input_size for x above.
+                - {torch.tensor} or {numpy.ndarray} -- Preprocessed target array of
+                  size (batch_size, 1).
+
+            """
+            #######################################################################
+            #                       ** START OF YOUR CODE **
+            #######################################################################
+
+            # Replace this code with your own
+            # Return preprocessed x and y, return None for y if it was None
+
+
+            if training==True:
+                # Replace all x Nan with median
+                x_columns=x.select_dtypes(include=['float']).columns
+                self.median_train_dict=dict()
+
+                def replace_NA(df,column_name):
+                    median_col=df[column_name].median()
+                    self.median_train_dict[column_name]=median_col
+                    df[column_name].fillna(median_col,inplace=True)
+
+                    return df.isnull().sum()
+
+
+                for column in x_columns:
+                    replace_NA(x,column)
+                    
+                # Replace all x 'object' types Nan with median
+                # imp = SimpleImputer(missing_values='NAN', strategy='most_frequent', fill_value=None)
+                # new_col=imp.fit_transform(np.array(x['ocean_proximity']).reshape(-1, 1))
+
+                # x['ocean_proximity']=new_col
+                most_freq_cat=x['ocean_proximity'].value_counts()[0]#.to_frame()
+                self.median_train_dict['ocean_proximity']=most_freq_cat
           
-        Arguments:
-            - x {pd.DataFrame} -- Raw input array of shape 
-                (batch_size, input_size).
-            - y {pd.DataFrame} -- Raw target array of shape (batch_size, 1).
-            - training {boolean} -- Boolean indicating if we are training or 
-                testing the model.
+                x['ocean_proximity'].fillna(most_freq_cat,inplace=True)
 
-        Returns:
-            - {torch.tensor} or {numpy.ndarray} -- Preprocessed input array of
-              size (batch_size, input_size). The input_size does not have to be the same as the input_size for x above.
-            - {torch.tensor} or {numpy.ndarray} -- Preprocessed target array of
-              size (batch_size, 1).
+                
+                # Replace all y Nan with median
+                if y is None:
+                    pass
+                else:
+                    y_columns=y.columns
+                    median_col_y=y["median_house_value"].median()
+                    self.median_train_dict["median_house_value"]=median_col_y
+                    y["median_house_value"].fillna(median_col_y,inplace=True)
+                
+                #Convert all the clean data to numerical data
+                one_hot_encoded_data=pd.get_dummies(x, columns = ['ocean_proximity'])
+                
+                #Normalize all the clean data
+                x=(one_hot_encoded_data-one_hot_encoded_data.min())/(one_hot_encoded_data.max()-one_hot_encoded_data.min())
+
+
+                
+            else: #if data is test data
+                
+                x_columns=x.select_dtypes(include=['float']).columns
+                # Replace all x Nan with median
+                def replace_NA(df,column_name):
+                    df[column_name].fillna(self.median_train_dict[column_name],inplace=True)
+
+                    return df.isnull().sum()
+
+
+                for column in x_columns:
+                    replace_NA(x,column)
+                
+                # Replace all x 'object' types Nan with median
+                x["ocean_proximity"].fillna(self.median_train_dict['ocean_proximity'],inplace=True)
+                if y is None:
+                    pass
+                else:
+                    
+                    y_columns=y.columns
+                    y["median_house_value"].fillna(self.median_train_dict["median_house_value"],inplace=True)
+                
+                #Convert all the clean data to numerical data
+                one_hot_encoded_data=pd.get_dummies(x, columns = ['ocean_proximity'])
+                
+                #Normalize all the clean data
+                x=(one_hot_encoded_data-one_hot_encoded_data.min())/(one_hot_encoded_data.max()-one_hot_encoded_data.min())         
+                
             
-        """
 
-        #######################################################################
-        #                       ** START OF YOUR CODE **
-        #######################################################################
 
-        # Replace this code with your own
-        # Return preprocessed x and y, return None for y if it was None
-        return x, (y if isinstance(y, pd.DataFrame) else None)
+            # print(self.median_train_dict)
+            return x, (y if isinstance(y, pd.DataFrame) else None)
 
-        #######################################################################
-        #                       ** END OF YOUR CODE **
-        #######################################################################
+            #######################################################################
+            #                       ** END OF YOUR CODE **
+            #######################################################################
 
         
     def fit(self, x, y):
