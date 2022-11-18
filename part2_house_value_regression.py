@@ -225,9 +225,9 @@ class Regressor():
 
         # X, _ = self._preprocessor(x, training = False) # Do not forget
         try : 
-            
-            x = torch.tensor(x.values.astype(np.float32)) 
-            output = self.linear_model(x)
+            X, _ = self._preprocessor(x, training = False)
+            X = Variable(torch.from_numpy(X).type(dtype=torch.float32 ))
+            output = self.linear_model(X)
             return output.detach().numpy()
 
         except Exception:
@@ -255,9 +255,7 @@ class Regressor():
         #######################################################################
         try :
             X, Y = self._preprocessor(x, y, training = False) # Do not forget
-            print(X.dtype)
-            y_model = self.predict(pd.DataFrame(X))        
-            
+            y_model = self.predict(x)        
             return mean_squared_error(Y, y_model, squared=False) # Replace this code with your own
  
         except Exception:
