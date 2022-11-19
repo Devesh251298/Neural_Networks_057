@@ -5,7 +5,7 @@ import pandas as pd
 from torch.autograd import Variable
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import mean_squared_error, r2_score
-from collections import OrderedDict
+from sklearn.model_selection import GridSearchCV
 from torch import nn
 import torch
 import traceback
@@ -42,8 +42,12 @@ class Regressor():
         # Replace this code with your own
         try:
             X, _ = self._preprocessor(x, training = True)
+            print(f"Constructing a regressor with X of shape: {X.shape}")
+
+            self.x = x
             self.median_train_dict=dict() # Stores all median values for training data.
             self.input_size = X.shape[1]
+            print(f"setting input size: {self.input_size}")
             self.output_size = 1
             self.nb_epoch = nb_epoch 
             self.learning_rate = learning_rate
@@ -60,6 +64,8 @@ class Regressor():
                     n_in = self.input_size
                 else:
                     n_in = self.neurons[layer_num-1]
+                print(f"input size: {self.input_size}")
+                print(f"Building linear layer of shape: {n_in},{n_out}")
                 self._layers.append(nn.Linear(n_in, n_out))
                 
                 # add activation function
@@ -84,7 +90,24 @@ class Regressor():
         #                       ** END OF YOUR CODE **
         #######################################################################
 
-
+    def get_params(self, deep=False):
+        """ Method to get parameters needed to perform sklearn grid search."""
+        hyperparameters = {
+            'x': self.x,
+            'neurons': self.neurons,
+            'activations': self.activations,
+            'batch_size': self.batch_size,
+            'nb_epoch': self.nb_epoch,
+            'learning_rate': self.learning_rate
+        }
+        return hyperparameters
+    
+    def set_params(self, **parameters):
+        """ Method to set parameters needed to perform sklearn grid search."""
+        for parameter, value in parameters.items():
+            setattr(self, parameter, value)
+        return self
+    
     def _preprocessor(self, x, y = None, training = False):
             """ 
             Preprocess input of the network.
@@ -215,6 +238,8 @@ class Regressor():
         #                       ** START OF YOUR CODE **
         #######################################################################
         try : 
+            header_template = "Training a Regressor model with: x shape: {}, y shape: {}, neurons: {}, activations: {}, lr: {}, batch-size: {}, nb_epochs: {}"
+            print(header_template.format(x.shape, y.shape, self.neurons, self.activations, self.learning_rate, self.batch_size, self.nb_epoch))
             X, Y = self._preprocessor(x, y = y, training = True) # Do not forget
             # Transform numpy arrays into tensors
             X = Variable(torch.from_numpy(X).type(dtype=torch.FloatTensor)).requires_grad_(True)
@@ -278,6 +303,8 @@ class Regressor():
         # X, _ = self._preprocessor(x, training = False) # Do not forget
         try : 
             X, _ = self._preprocessor(x, training = False)
+            print(f"Predicting Y for X of shape {X.shape}")
+
             X = Variable(torch.from_numpy(X).type(dtype=torch.float32 ))
             output = self.model(X)
             return output.detach().numpy()
@@ -307,7 +334,9 @@ class Regressor():
         #######################################################################
         try :
             X, Y = self._preprocessor(x, y, training = False) # Do not forget
-            y_model = self.predict(x)        
+            print(f"Scoring with x of shape {X.shape} and y of shape {Y.shape}")
+
+            y_model = self.predict(x)
             return mean_squared_error(Y, y_model, squared=False) # Replace this code with your own
  
         except Exception:
@@ -364,11 +393,17 @@ def load_regressor():
 
 
 
-def RegressorHyperParameterSearch(): 
+def RegressorHyperParameterSearch(x_train, y_train): 
     # Ensure to add whatever inputs you deem necessary to this function
     """
     Performs a hyper-parameter for fine-tuning the regressor implemented 
     in the Regressor class.
+    
+    We will perform hyper-parameter tuning using a bottom-up approach.
+    First we will fine-tune a NN with 1 hidden layer, and get the optimal
+    number of neurons. Then we will fine-tune a NN with 2 hidden layers,
+    fixing the number of neurons for the first layer and tuning the number
+    of neurons of the second neuron. Etcetera...
 
     Arguments:
         Add whatever inputs you need.
@@ -381,7 +416,29 @@ def RegressorHyperParameterSearch():
     #######################################################################
     #                       ** START OF YOUR CODE **
     #######################################################################
-
+    
+    # do hyperparam tuning of a nn with 1 hidden layer
+    n_out = 1
+    n_in = x_train.shape[1]
+    # rule of thumb: number of hidden neurons should be less than twice input size
+    n_hidden = list(range(n_out, 2*n_in))
+    
+    # define grid to search with 5-fold cross-validation
+    hyperparameters = {
+        'x': [x_train],
+        'neurons': [[num_neurons,1] for num_neurons in n_hidden],
+        'activations': [["relu","relu"], ["sigmoid","relu"]],
+        'batch_size': [64, 128, 256],
+        'nb_epoch': [10],
+        'learning_rate': [0.1, 0.01, 0.001]
+    }
+    # define grid search on the Regressor estimator with 5-fold cross-validation
+    gs = GridSearchCV(Regressor(x_train), hyperparameters, cv=5)
+    
+    # fit the training data
+    gs.fit(x_train,  y_train)
+    breakpoint()
+    # do hyperparam tuning of a nn with 2 hidden layers
     return  # Return the chosen hyper parameters
 
 
@@ -410,14 +467,18 @@ def hyperparam_main():
     # to make sure the model isn't overfitting
     
     # trying NN with 1 hidden layer with 18 (=2xinput dim) neurons
+    """
     neurons = [1]
     activations = ["relu"]
     
     regressor = Regressor(x_train, neurons, activations, batch_size = 128, nb_epoch = 1000)
 
-
     regressor.fit(x_train, y_train)
     save_regressor(regressor)
+    """
+    
+    # do hyperparam tuning
+    RegressorHyperParameterSearch(x_train, y_train)
 
     # Error
     print(x_train.shape)
