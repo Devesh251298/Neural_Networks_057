@@ -315,15 +315,21 @@ class Regressor():
         
         
     def _next_batch(self, inputs, targets, batchSize):
-        # loop over the dataset
-        for i in range(0, inputs.shape[0], batchSize):
-            # yield a tuple of the current batched data and labels
-            yield (inputs[i:i + batchSize], targets[i:i + batchSize])
+        try:
+            # loop over the dataset
+            for i in range(0, inputs.shape[0], batchSize):
+                # yield a tuple of the current batched data and labels
+                yield (inputs[i:i + batchSize], targets[i:i + batchSize])
+        except Exception:
+            traceback.print_exc()
 
     def _weights_init(self, m):
-        if isinstance(m, nn.Linear):
-            torch.nn.init.xavier_uniform_(m.weight)
-            torch.nn.init.zeros_(m.bias)
+        try:
+            if isinstance(m, nn.Linear):
+                torch.nn.init.xavier_uniform_(m.weight)
+                torch.nn.init.zeros_(m.bias)
+        except Exception:
+            traceback.print_exc()
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
