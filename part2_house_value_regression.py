@@ -54,7 +54,11 @@ class Regressor():
             self.batch_size = batch_size
             self.neurons = neurons
             self.activations = activations
-            
+            self.one_hot_encoded_data_train_min=0
+            self.one_hot_encoded_data_train_max=0
+            self.cat_dummies=list() #stores all training dummy variables
+            self.processed_columns=list() #stores all training columns including dummy variables
+
             # build layers specified by self.neurons and self.activations
             self._layers = []
             for layer_num in range(len(self.neurons)):
@@ -173,9 +177,22 @@ class Regressor():
 
                     #Convert all the clean data to numerical data
                     one_hot_encoded_data=pd.get_dummies(x, columns = ['ocean_proximity'])
-                    
+
+                    #Storing one_hot encoded data to be used in validation set
+                    cat_columns = ["ocean_proximity"]
+                
+                    #create the dummy variables
+                    df_processed = pd.get_dummies(x,prefix_sep="__",columns=cat_columns)
+
+                    #store the dummy variables from training dataset
+                    self.cat_dummies = [col for col in df_processed if "__" in col and col.split("__")[0] in cat_columns]        
+                    #store all columns of the training dataset in a list
+                    self.processed_columns = list(df_processed.columns[:])  
+
                     #Normalize all the clean data
-                    x=(one_hot_encoded_data-one_hot_encoded_data.min())/(one_hot_encoded_data.max()-one_hot_encoded_data.min())
+                    self.one_hot_encoded_data_train_min=one_hot_encoded_data.min()
+                    self.one_hot_encoded_data_train_max=one_hot_encoded_data.max()
+                    x=(one_hot_encoded_data-self.one_hot_encoded_data_train_min)/(self.one_hot_encoded_data_train_max-self.one_hot_encoded_data_train_min)
 
 
                     
@@ -201,14 +218,34 @@ class Regressor():
                         y_columns=y.columns
                         y["median_house_value"].fillna(self.median_train_dict["median_house_value"],inplace=True)
                         y=y.to_numpy()
-                    
+
                     #Convert all the clean data to numerical data
-                    one_hot_encoded_data=pd.get_dummies(x, columns = ['ocean_proximity'])
+                    # one_hot_encoded_data=pd.get_dummies(x, columns = ['ocean_proximity'])
                     
+                    #one hot encode the test data set
+                    cat_columns = ["ocean_proximity"]
+
+                    df_test_processed = pd.get_dummies(x, prefix_sep="__", columns=cat_columns)
+
+                    #removing additional features from test set
+                    for col in df_test_processed.columns:
+                        if ("__" in col) and (col.split("__")[0] in cat_columns) and col not in self.cat_dummies:
+                            df_test_processed.drop(col, axis=1, inplace=True)  
+
+                    #adding 0's to missing features in test set
+                    for col in self.cat_dummies:
+                        if col not in df_test_processed.columns:
+                            df_test_processed[col] = 0
+
+                    # print(self.processed_columns)
+
+                    #add all missing One hot encoders
+                    df_test_processed = df_test_processed[self.processed_columns]
+                    one_hot_encoded_data=df_test_processed
+                        
                     #Normalize all the clean data
                     x=(one_hot_encoded_data-one_hot_encoded_data.min())/(one_hot_encoded_data.max()-one_hot_encoded_data.min())         
                     
-
                 x=x.to_numpy()
                 
                 return x, (y if isinstance(y, (np.ndarray, np.generic,pd.DataFrame)) else None)
@@ -500,11 +537,25 @@ def example_main():
     x_train = data.loc[:, data.columns != output_label]
     y_train = data.loc[:, [output_label]]
 
+    # x_train = data.loc[20:50, data.columns != output_label]
+    # y_train = data.loc[20:50, [output_label]]
+
+
+
     # Training
     # This example trains on the whole available dataset. 
     # You probably want to separate some held-out data 
     # to make sure the model isn't overfitting
     regressor = Regressor(x_train, nb_epoch = 1000)
+
+
+    x_pre_proc,y_pre_proc=regressor._preprocessor(x_train,y_train,training=True)
+ 
+
+
+
+    #Uncomment this when done ############
+
 
 
     regressor.fit(x_train, y_train)
@@ -517,9 +568,20 @@ def example_main():
 
 
 if __name__ == "__main__":
-    #example_main()
-    hyperparam_main()
+    example_main()
+    # hyperparam_main()
     #Testing preprocessor
     # x_pre_proc,y_pre_proc=regressor._preprocessor(x_train,y_train,training=True)
     # print(f' x type = {type(x_pre_proc)},y type = {type(y_pre_proc)}')
+    # print(f' x type = {type(x_pre_proc)},y type = {type(y_pre_proc)}')
+    # print(x_pre_proc)
+
+    # x_test = data.loc[:10, data.columns != output_label]
+    # y_test = data.loc[:10, [output_label]]
+
+    # x_pre_proc_test,y_pre_proc_test=regressor._preprocessor(x_test,y_test,training=False)
+
+    # print(f' length of training data={len(x_pre_proc.columns)}')
+    # print(f' length of test data={len(x_pre_proc_test.columns)}')
+
 
