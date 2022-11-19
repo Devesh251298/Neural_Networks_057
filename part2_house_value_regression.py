@@ -11,18 +11,6 @@ import torch
 import traceback
 
 
-def next_batch(inputs, targets, batchSize):
-    # loop over the dataset
-    for i in range(0, inputs.shape[0], batchSize):
-        # yield a tuple of the current batched data and labels
-        yield (inputs[i:i + batchSize], targets[i:i + batchSize])
-
-def weights_init(m):
-    if isinstance(m, nn.Linear):
-        torch.nn.init.xavier_uniform_(m.weight)
-        torch.nn.init.zeros_(m.bias)
-
-
 
 pd.options.mode.chained_assignment = None
 class Regressor():
@@ -84,7 +72,7 @@ class Regressor():
         self.model = nn.Sequential(*self._layers)
         
         # initialize weights randomly (otherwise they stay at zero)
-        self.model.apply(weights_init)
+        self.model.apply(self._weights_init)
         
         # define loss and optimimser
         self.mse_loss = torch.nn.MSELoss()
@@ -237,7 +225,7 @@ class Regressor():
                 samples = 0
                 self.model.train()
 
-                for (batch_X, batch_Y) in next_batch(X, Y, self.batch_size):
+                for (batch_X, batch_Y) in self._next_batch(X, Y, self.batch_size):
                     # Zero the gradients
                     self.optimiser.zero_grad()
                     # Compute a forward pass
@@ -323,6 +311,18 @@ class Regressor():
  
         except Exception:
             traceback.print_exc()
+        
+        
+    def _next_batch(self, inputs, targets, batchSize):
+        # loop over the dataset
+        for i in range(0, inputs.shape[0], batchSize):
+            # yield a tuple of the current batched data and labels
+            yield (inputs[i:i + batchSize], targets[i:i + batchSize])
+
+    def _weights_init(self, m):
+        if isinstance(m, nn.Linear):
+            torch.nn.init.xavier_uniform_(m.weight)
+            torch.nn.init.zeros_(m.bias)
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -376,6 +376,7 @@ def RegressorHyperParameterSearch():
     #######################################################################
 
     return  # Return the chosen hyper parameters
+
 
     #######################################################################
     #                       ** END OF YOUR CODE **
