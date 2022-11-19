@@ -7,6 +7,11 @@ from sklearn.impute import SimpleImputer
 from sklearn.metrics import mean_squared_error, r2_score
 import traceback
 
+def next_batch(inputs, targets, batchSize):
+	# loop over the dataset
+	for i in range(0, inputs.shape[0], batchSize):
+		# yield a tuple of the current batched data and labels
+		yield (inputs[i:i + batchSize], targets[i:i + batchSize])
 
 pd.options.mode.chained_assignment = None
 class Regressor():
@@ -37,9 +42,10 @@ class Regressor():
         self.nb_epoch = nb_epoch 
         self.median_train_dict=dict() # Stores all median values for training data.
         self.learning_rate = 0.01
-        self.linear_model = torch.nn.Linear(self.input_size, self.output_size)
+        self.batch_size = 64
+        self.model = torch.nn.Linear(self.input_size, self.output_size)
         self.mse_loss = torch.nn.MSELoss()
-        self.optimiser = torch.optim.SGD(self.linear_model.parameters(), lr = self.learning_rate) 
+        self.optimiser = torch.optim.SGD(self.model.parameters(), lr = self.learning_rate) 
 
 
         #######################################################################
@@ -178,27 +184,37 @@ class Regressor():
         #######################################################################
         try : 
             X, Y = self._preprocessor(x, y = y, training = True) # Do not forget
-            
+        
             # Transform numpy arrays into tensors
-            X = Variable(torch.from_numpy(X).type(dtype=torch.float32 ))
-            Y = Variable(torch.from_numpy(Y).type(dtype=torch.float32 ))
+            X = Variable(torch.from_numpy(X).type(dtype=torch.FloatTensor)).requires_grad_(True)
+            Y = Variable(torch.from_numpy(Y).type(dtype=torch.FloatTensor)).requires_grad_(True)
+
             for epoch in range(self.nb_epoch):
+                print("Epoch: {}...".format(epoch + 1))
+                train_loss = 0
+                train_acc = 0
+                samples = 0
+                self.model.train()
+
+                for (batch_X, batch_Y) in next_batch(X, Y, self.batch_size):
+                    # Zero the gradients
+                    self.optimiser.zero_grad()
+                    # Compute a forward pass
+                    output = self.model(batch_X) 
+                    # Compute MSE based on forward pass
+                    loss_forward = self.mse_loss(output, batch_Y)
                 
-                # Compute a forward pass
-                output = self.linear_model(X) 
+                    # Perform backward pass 
+                    loss_forward.backward()
 
-                # Compute MSE based on forward pass
-                loss_forward = self.mse_loss(output, Y)
-              
-                # Perform backward pass 
-                loss_forward.backward()
-
-                # Update parameters of the model
-                self.optimiser.step()
-
-                # print('epoch {}'.format(epoch), loss_forward.item())
-
-            return self
+                    # Update parameters of the model
+                    self.optimiser.step()
+                    train_loss += loss_forward.item() * batch_Y.size(0)
+                    train_acc += (output.max(1)[1] == batch_Y).sum().item()
+                    samples += batch_Y.size(0)
+                train_template = "epoch: {} train loss: {:.3f} train accuracy: {:.3f}"
+                print(train_template.format(epoch + 1, (train_loss / samples),
+                    (train_acc / samples)))
 
         except Exception:
             traceback.print_exc()
@@ -206,6 +222,7 @@ class Regressor():
         #                       ** END OF YOUR CODE **
         #######################################################################
 
+        
             
     def predict(self, x):
         """
@@ -227,7 +244,7 @@ class Regressor():
         try : 
             X, _ = self._preprocessor(x, training = False)
             X = Variable(torch.from_numpy(X).type(dtype=torch.float32 ))
-            output = self.linear_model(X)
+            output = self.model(X)
             return output.detach().numpy()
 
         except Exception:
@@ -337,7 +354,7 @@ def example_main():
     # This example trains on the whole available dataset. 
     # You probably want to separate some held-out data 
     # to make sure the model isn't overfitting
-    regressor = Regressor(x_train, nb_epoch = 30000)
+    regressor = Regressor(x_train, nb_epoch = 1000)
 
 
     regressor.fit(x_train, y_train)
