@@ -15,7 +15,7 @@ import traceback
 pd.options.mode.chained_assignment = None
 class Regressor():
 
-    def __init__(self, x, neurons, activations, learning_rate = 0.001, batch_size = 64, nb_epoch = 1000):
+    def __init__(self, x, neurons=[1], activations=["relu"], learning_rate = 0.001, batch_size = 64, nb_epoch = 1000):
         # You can add any input parameters you need
         # Remember to set them with a default value for LabTS tests
         """ 
