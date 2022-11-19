@@ -40,44 +40,45 @@ class Regressor():
         #######################################################################
 
         # Replace this code with your own
-
-        X, _ = self._preprocessor(x, training = True)
-        self.median_train_dict=dict() # Stores all median values for training data.
-        self.input_size = X.shape[1]
-        self.output_size = 1
-        self.nb_epoch = nb_epoch 
-        self.learning_rate = learning_rate
-        self.batch_size = batch_size
-        self.neurons = neurons
-        self.activations = activations
-        
-        # build layers specified by self.neurons and self.activations
-        self._layers = []
-        for layer_num in range(len(self.neurons)):
-            # add linear layer
-            n_out = self.neurons[layer_num]
-            if layer_num == 0:
-                n_in = self.input_size
-            else:
-                n_in = self.neurons[layer_num-1]
-            self._layers.append(nn.Linear(n_in, n_out))
+        try:
+            X, _ = self._preprocessor(x, training = True)
+            self.median_train_dict=dict() # Stores all median values for training data.
+            self.input_size = X.shape[1]
+            self.output_size = 1
+            self.nb_epoch = nb_epoch 
+            self.learning_rate = learning_rate
+            self.batch_size = batch_size
+            self.neurons = neurons
+            self.activations = activations
             
-            # add activation function
-            if self.activations[layer_num] == "relu":
-                self._layers.append(nn.ReLU())
-            else:
-                self._layers.append(nn.Sigmoid())
+            # build layers specified by self.neurons and self.activations
+            self._layers = []
+            for layer_num in range(len(self.neurons)):
+                # add linear layer
+                n_out = self.neurons[layer_num]
+                if layer_num == 0:
+                    n_in = self.input_size
+                else:
+                    n_in = self.neurons[layer_num-1]
+                self._layers.append(nn.Linear(n_in, n_out))
+                
+                # add activation function
+                if self.activations[layer_num] == "relu":
+                    self._layers.append(nn.ReLU())
+                else:
+                    self._layers.append(nn.Sigmoid())
+                
+            # build torch neural network with the specified layers
+            self.model = nn.Sequential(*self._layers)
             
-        # build torch neural network with the specified layers
-        self.model = nn.Sequential(*self._layers)
-        
-        # initialize weights randomly (otherwise they stay at zero)
-        self.model.apply(self._weights_init)
-        
-        # define loss and optimimser
-        self.mse_loss = torch.nn.MSELoss()
-        self.optimiser = torch.optim.SGD(self.model.parameters(), lr = self.learning_rate) 
-
+            # initialize weights randomly (otherwise they stay at zero)
+            self.model.apply(self._weights_init)
+            
+            # define loss and optimimser
+            self.mse_loss = torch.nn.MSELoss()
+            self.optimiser = torch.optim.SGD(self.model.parameters(), lr = self.learning_rate) 
+        except Exception:
+            traceback.print_exc()
 
         #######################################################################
         #                       ** END OF YOUR CODE **
