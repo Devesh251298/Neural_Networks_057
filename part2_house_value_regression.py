@@ -5,18 +5,29 @@ import pandas as pd
 from torch.autograd import Variable
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import mean_squared_error, r2_score
+from collections import OrderedDict
+from torch import nn
+import torch
 import traceback
 
+
 def next_batch(inputs, targets, batchSize):
-	# loop over the dataset
-	for i in range(0, inputs.shape[0], batchSize):
-		# yield a tuple of the current batched data and labels
-		yield (inputs[i:i + batchSize], targets[i:i + batchSize])
+    # loop over the dataset
+    for i in range(0, inputs.shape[0], batchSize):
+        # yield a tuple of the current batched data and labels
+        yield (inputs[i:i + batchSize], targets[i:i + batchSize])
+
+def weights_init(m):
+    if isinstance(m, nn.Linear):
+        torch.nn.init.xavier_uniform_(m.weight)
+        torch.nn.init.zeros_(m.bias)
+
+
 
 pd.options.mode.chained_assignment = None
 class Regressor():
 
-    def __init__(self, x, nb_epoch = 1000):
+    def __init__(self, x, neurons, activations, learning_rate = 0.001, batch_size = 64, nb_epoch = 1000):
         # You can add any input parameters you need
         # Remember to set them with a default value for LabTS tests
         """ 
@@ -26,7 +37,13 @@ class Regressor():
             - x {pd.DataFrame} -- Raw input data of shape 
                 (batch_size, input_size), used to compute the size 
                 of the network.
+            - neurons {list[int]} -- list specifying the number of
+                neurons in each linear layer (length = depth of the nn)
+            - activations {list[str]} -- list containing the activation
+                functions after each linear layer
+            - learning_rate {float} -- learning rate to train the network
             - nb_epoch {int} -- number of epochs to train the network.
+            - batch_size {int} -- number of instances in each batch
 
         """
 
@@ -37,13 +54,39 @@ class Regressor():
         # Replace this code with your own
 
         X, _ = self._preprocessor(x, training = True)
+        self.median_train_dict=dict() # Stores all median values for training data.
         self.input_size = X.shape[1]
         self.output_size = 1
         self.nb_epoch = nb_epoch 
-        self.median_train_dict=dict() # Stores all median values for training data.
-        self.learning_rate = 0.01
-        self.batch_size = 64
-        self.model = torch.nn.Linear(self.input_size, self.output_size)
+        self.learning_rate = learning_rate
+        self.batch_size = batch_size
+        self.neurons = neurons
+        self.activations = activations
+        
+        # build layers specified by self.neurons and self.activations
+        self._layers = []
+        for layer_num in range(len(self.neurons)):
+            # add linear layer
+            n_out = self.neurons[layer_num]
+            if layer_num == 0:
+                n_in = self.input_size
+            else:
+                n_in = self.neurons[layer_num-1]
+            self._layers.append(nn.Linear(n_in, n_out))
+            
+            # add activation function
+            if self.activations[layer_num] == "relu":
+                self._layers.append(nn.ReLU())
+            else:
+                self._layers.append(nn.Sigmoid())
+            
+        # build torch neural network with the specified layers
+        self.model = nn.Sequential(*self._layers)
+        
+        # initialize weights randomly (otherwise they stay at zero)
+        self.model.apply(weights_init)
+        
+        # define loss and optimimser
         self.mse_loss = torch.nn.MSELoss()
         self.optimiser = torch.optim.SGD(self.model.parameters(), lr = self.learning_rate) 
 
@@ -184,15 +227,13 @@ class Regressor():
         #######################################################################
         try : 
             X, Y = self._preprocessor(x, y = y, training = True) # Do not forget
-        
             # Transform numpy arrays into tensors
             X = Variable(torch.from_numpy(X).type(dtype=torch.FloatTensor)).requires_grad_(True)
             Y = Variable(torch.from_numpy(Y).type(dtype=torch.FloatTensor)).requires_grad_(True)
 
             for epoch in range(self.nb_epoch):
-                print("Epoch: {}...".format(epoch + 1))
                 train_loss = 0
-                train_acc = 0
+                avg_y_pred = 0
                 samples = 0
                 self.model.train()
 
@@ -201,6 +242,10 @@ class Regressor():
                     self.optimiser.zero_grad()
                     # Compute a forward pass
                     output = self.model(batch_X) 
+                    
+                    # add the sum of y_pred to compute the avg
+                    avg_y_pred += output.sum().item()
+                    
                     # Compute MSE based on forward pass
                     loss_forward = self.mse_loss(output, batch_Y)
                 
@@ -210,11 +255,12 @@ class Regressor():
                     # Update parameters of the model
                     self.optimiser.step()
                     train_loss += loss_forward.item() * batch_Y.size(0)
-                    train_acc += (output.max(1)[1] == batch_Y).sum().item()
                     samples += batch_Y.size(0)
-                train_template = "epoch: {} train loss: {:.3f} train accuracy: {:.3f}"
-                print(train_template.format(epoch + 1, (train_loss / samples),
-                    (train_acc / samples)))
+                if epoch%10 == 0:
+                    print("Epoch: {}...".format(epoch+1))
+                    train_template = "epoch: {} train rmse: {:e} avg y pred: {:e}"
+                    print(train_template.format(epoch + 1, (np.sqrt(train_loss) / samples),
+                        avg_y_pred / samples))
 
         except Exception:
             traceback.print_exc()
@@ -337,6 +383,41 @@ def RegressorHyperParameterSearch():
 
 
 
+def hyperparam_main():
+
+    output_label = "median_house_value"
+
+    # Use pandas to read CSV data as it contains various object types
+    # Feel free to use another CSV reader tool
+    # But remember that LabTS tests take Pandas DataFrame as inputs
+    data = pd.read_csv("housing.csv") 
+
+    # Splitting input and output
+    x_train = data.loc[:, data.columns != output_label]
+    y_train = data.loc[:, [output_label]]
+
+    # Training
+    # This example trains on the whole available dataset. 
+    # You probably want to separate some held-out data 
+    # to make sure the model isn't overfitting
+    
+    # trying NN with 1 hidden layer with 18 (=2xinput dim) neurons
+    neurons = [1]
+    activations = ["relu"]
+    
+    regressor = Regressor(x_train, neurons, activations, batch_size = 128, nb_epoch = 1000)
+
+
+    regressor.fit(x_train, y_train)
+    save_regressor(regressor)
+
+    # Error
+    print(x_train.shape)
+    error = regressor.score(x_train, y_train)
+    print("\nRegressor error: {}\n".format(error))
+
+
+
 def example_main():
 
     output_label = "median_house_value"
@@ -367,8 +448,8 @@ def example_main():
 
 
 if __name__ == "__main__":
-    example_main()
-
+    #example_main()
+    hyperparam_main()
     #Testing preprocessor
     # x_pre_proc,y_pre_proc=regressor._preprocessor(x_train,y_train,training=True)
     # print(f' x type = {type(x_pre_proc)},y type = {type(y_pre_proc)}')
