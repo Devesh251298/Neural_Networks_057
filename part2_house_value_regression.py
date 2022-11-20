@@ -457,16 +457,16 @@ def RegressorHyperParameterSearch(x_train, y_train):
     n_out = 1
     n_in = x_train.shape[1]
     # rule of thumb: number of hidden neurons should be less than twice input size
-    n_hidden = list(range(n_out, 2*n_in))
+    n_hidden = list(range(n_in, n_in+1))
     
     # define grid to search with 5-fold cross-validation
     hyperparameters = {
         'x': [x_train],
         'neurons': [[num_neurons,1] for num_neurons in n_hidden],
         'activations': [["relu","relu"], ["sigmoid","relu"]],
-        'batch_size': [64, 128, 256],
-        'nb_epoch': [10],
-        'learning_rate': [0.1, 0.01, 0.001]
+        'batch_size': [128],
+        'nb_epoch': [1000],
+        'learning_rate': [0.001]
     }
     # define grid search on the Regressor estimator with 5-fold cross-validation
     gs = GridSearchCV(Regressor(x_train), hyperparameters, cv=5)
