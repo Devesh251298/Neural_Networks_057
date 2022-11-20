@@ -9,8 +9,7 @@ from sklearn.model_selection import GridSearchCV
 from torch import nn
 import torch
 import traceback
-
-
+import json
 
 pd.options.mode.chained_assignment = None
 class Regressor():
@@ -84,7 +83,7 @@ class Regressor():
             
             # define loss and optimimser
             self.mse_loss = torch.nn.MSELoss()
-            self.optimiser = torch.optim.SGD(self.model.parameters(), lr = self.learning_rate) 
+            self.optimiser = torch.optim.SGD(self.model.parameters(), self.learning_rate) 
         except Exception:
             traceback.print_exc()
 
@@ -108,7 +107,49 @@ class Regressor():
         """ Method to set parameters needed to perform sklearn grid search."""
         for parameter, value in parameters.items():
             setattr(self, parameter, value)
+        
+        # copy everything that is inside the construtor to re-set model and optimiser again
+        X, _ = self._preprocessor(self.x, training = True)
+
+        self.median_train_dict=dict() # Stores all median values for training data.
+        self.min_train = pd.DataFrame({}) # stores min values
+        self.max_train = pd.DataFrame({}) # stores max train values
+        self.input_size = X.shape[1]
+        self.one_hot_encoded_data_train_min=0
+        self.one_hot_encoded_data_train_max=0
+        self.cat_dummies=list() #stores all training dummy variables
+        self.processed_columns=list() #stores all training columns including dummy variables
+
+        # build layers specified by self.neurons and self.activations
+        self._layers = []
+        for layer_num in range(len(self.neurons)):
+            # add linear layer
+            n_out = self.neurons[layer_num]
+            if layer_num == 0:
+                n_in = self.input_size
+            else:
+                n_in = self.neurons[layer_num-1]
+            self._layers.append(nn.Linear(n_in, n_out))
+            
+            # add activation function
+            if self.activations[layer_num] == "relu":
+                self._layers.append(nn.ReLU())
+            else:
+                self._layers.append(nn.Sigmoid())
+            
+        # build torch neural network with the specified layers
+        self.model = nn.Sequential(*self._layers)
+        
+        # initialize weights randomly (otherwise they stay at zero)
+        self.model.apply(self._weights_init)
+        
+        # define loss and optimimser
+        self.mse_loss = torch.nn.MSELoss()
+        self.optimiser = torch.optim.SGD(self.model.parameters(), self.learning_rate) 
+        
         return self
+
+        
     
     def _preprocessor(self, x, y = None, training = False):
             """ 
@@ -209,7 +250,7 @@ class Regressor():
                     x["ocean_proximity"].fillna(self.median_train_dict['ocean_proximity'],inplace=True)
                     if y is None:
                         pass
-                    else:                        
+                    else:
                         y_columns=y.columns
                         y["median_house_value"].fillna(self.median_train_dict["median_house_value"],inplace=True)
                         y=y.to_numpy()
@@ -274,6 +315,8 @@ class Regressor():
         try : 
             header_template = "Training a Regressor model with: x shape: {}, y shape: {}, neurons: {}, activations: {}, lr: {}, batch-size: {}, nb_epochs: {}"
             print(header_template.format(x.shape, y.shape, self.neurons, self.activations, self.learning_rate, self.batch_size, self.nb_epoch))
+       
+
             X, Y = self._preprocessor(x, y = y, training = True) # Do not forget
             # Transform numpy arrays into tensors
             X = Variable(torch.from_numpy(X).type(dtype=torch.FloatTensor)).requires_grad_(True)
@@ -290,7 +333,7 @@ class Regressor():
                     self.optimiser.zero_grad()
                     # Compute a forward pass
                     output = self.model(batch_X) 
-                    
+
                     # add the sum of y_pred to compute the avg
                     avg_y_pred += output.sum().item()
                     
@@ -304,10 +347,10 @@ class Regressor():
                     self.optimiser.step()
                     train_loss += loss_forward.item() * batch_Y.size(0)
                     samples += batch_Y.size(0)
-                if epoch%10 == 0:
-                    print("Epoch: {}...".format(epoch+1))
+
+                if epoch%100 == 0:
                     train_template = "epoch: {} train rmse: {:e} avg y pred: {:e}"
-                    print(train_template.format(epoch + 1, (np.sqrt(train_loss) / samples),
+                    print(train_template.format(epoch, np.sqrt(train_loss/samples),
                         avg_y_pred / samples))
 
         except Exception:
@@ -457,15 +500,15 @@ def RegressorHyperParameterSearch(x_train, y_train):
     n_out = 1
     n_in = x_train.shape[1]
     # rule of thumb: number of hidden neurons should be less than twice input size
-    n_hidden = list(range(n_in, n_in+1))
+    n_hidden = list(range(n_out, 2*n_in))
     
     # define grid to search with 5-fold cross-validation
     hyperparameters = {
         'x': [x_train],
         'neurons': [[num_neurons,1] for num_neurons in n_hidden],
-        'activations': [["relu","relu"], ["sigmoid","relu"]],
-        'batch_size': [128],
-        'nb_epoch': [1000],
+        'activations': [["relu","relu"]],
+        'batch_size': [32],
+        'nb_epoch': [500],
         'learning_rate': [0.001]
     }
     # define grid search on the Regressor estimator with 5-fold cross-validation
@@ -473,7 +516,20 @@ def RegressorHyperParameterSearch(x_train, y_train):
     
     # fit the training data
     gs.fit(x_train,  y_train)
-    breakpoint()
+    
+    
+    # save results
+    results = {}
+    # delete dataframe x as it cannot be converted to json
+    results['params'] = gs.cv_results_['params']
+    for param in results['params']:
+        del param['x']
+    results['mean_test_score'] = gs.cv_results_['mean_test_score'].tolist()
+    results['std_test_score'] = gs.cv_results_['std_test_score'].tolist()
+    
+    # Save results to plot the graphs later on
+    json.dump(results, open("results.json",'w'))
+    
     # do hyperparam tuning of a nn with 2 hidden layers
     return  # Return the chosen hyper parameters
 
@@ -567,8 +623,8 @@ def example_main():
 
 
 if __name__ == "__main__":
-    example_main()
-    #hyperparam_main()
+    #example_main()
+    hyperparam_main()
     #Testing preprocessor
     # x_pre_proc,y_pre_proc=regressor._preprocessor(x_train,y_train,training=True)
     # print(f' x type = {type(x_pre_proc)},y type = {type(y_pre_proc)}')
