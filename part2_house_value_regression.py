@@ -42,12 +42,12 @@ class Regressor():
         # Replace this code with your own
         try:
             X, _ = self._preprocessor(x, training = True)
-            print(f"Constructing a regressor with X of shape: {X.shape}")
 
             self.x = x
             self.median_train_dict=dict() # Stores all median values for training data.
+            self.min_train = pd.DataFrame({}) # stores min values
+            self.max_train = pd.DataFrame({}) # stores max train values
             self.input_size = X.shape[1]
-            print(f"setting input size: {self.input_size}")
             self.output_size = 1
             self.nb_epoch = nb_epoch 
             self.learning_rate = learning_rate
@@ -68,8 +68,6 @@ class Regressor():
                     n_in = self.input_size
                 else:
                     n_in = self.neurons[layer_num-1]
-                print(f"input size: {self.input_size}")
-                print(f"Building linear layer of shape: {n_in},{n_out}")
                 self._layers.append(nn.Linear(n_in, n_out))
                 
                 # add activation function
@@ -175,9 +173,6 @@ class Regressor():
                         y["median_house_value"].fillna(median_col_y,inplace=True)
                         y=y.to_numpy()
 
-                    #Convert all the clean data to numerical data
-                    one_hot_encoded_data=pd.get_dummies(x, columns = ['ocean_proximity'])
-
                     #Storing one_hot encoded data to be used in validation set
                     cat_columns = ["ocean_proximity"]
                 
@@ -185,14 +180,14 @@ class Regressor():
                     df_processed = pd.get_dummies(x,prefix_sep="__",columns=cat_columns)
 
                     #store the dummy variables from training dataset
-                    self.cat_dummies = [col for col in df_processed if "__" in col and col.split("__")[0] in cat_columns]        
+                    self.cat_dummies = [col for col in df_processed if "__" in col and col.split("__")[0] in cat_columns]
                     #store all columns of the training dataset in a list
-                    self.processed_columns = list(df_processed.columns[:])  
+                    self.processed_columns = list(df_processed.columns[:])
 
                     #Normalize all the clean data
-                    self.one_hot_encoded_data_train_min=one_hot_encoded_data.min()
-                    self.one_hot_encoded_data_train_max=one_hot_encoded_data.max()
-                    x=(one_hot_encoded_data-self.one_hot_encoded_data_train_min)/(self.one_hot_encoded_data_train_max-self.one_hot_encoded_data_train_min)
+                    self.min_train=df_processed.min()
+                    self.max_train=df_processed.max()
+                    x=(df_processed-self.min_train)/(self.max_train-self.min_train)
 
 
                     
@@ -207,14 +202,14 @@ class Regressor():
 
 
                     for column in x_columns:
-                        replace_NA(x,column)
+                        null_values = replace_NA(x,column)
+                    
                     
                     # Replace all x 'object' types Nan with median
                     x["ocean_proximity"].fillna(self.median_train_dict['ocean_proximity'],inplace=True)
                     if y is None:
                         pass
-                    else:
-                        
+                    else:                        
                         y_columns=y.columns
                         y["median_house_value"].fillna(self.median_train_dict["median_house_value"],inplace=True)
                         y=y.to_numpy()
@@ -235,23 +230,25 @@ class Regressor():
                     #adding 0's to missing features in test set
                     for col in self.cat_dummies:
                         if col not in df_test_processed.columns:
+                            print(f"col {col} not in df_test_processed.columns")
                             df_test_processed[col] = 0
-
                     # print(self.processed_columns)
-
                     #add all missing One hot encoders
                     df_test_processed = df_test_processed[self.processed_columns]
-                    one_hot_encoded_data=df_test_processed
-                        
+
                     #Normalize all the clean data
-                    x=(one_hot_encoded_data-one_hot_encoded_data.min())/(one_hot_encoded_data.max()-one_hot_encoded_data.min())         
+                    for column in self.processed_columns:
+                        df_test_processed[column] -= self.min_train[column]
+                        df_test_processed[column] /= (self.max_train[column] - self.min_train[column])
                     
+                    x = df_test_processed
+
                 x=x.to_numpy()
-                
                 return x, (y if isinstance(y, (np.ndarray, np.generic,pd.DataFrame)) else None)
 
             except Exception:
                 traceback.print_exc()
+
             #######################################################################
             #                       ** END OF YOUR CODE **
             #######################################################################
@@ -374,10 +371,12 @@ class Regressor():
             print(f"Scoring with x of shape {X.shape} and y of shape {Y.shape}")
 
             y_model = self.predict(x)
+
             return mean_squared_error(Y, y_model, squared=False) # Replace this code with your own
  
         except Exception:
             traceback.print_exc()
+            breakpoint()
         
         
     def _next_batch(self, inputs, targets, batchSize):
@@ -569,7 +568,7 @@ def example_main():
 
 if __name__ == "__main__":
     example_main()
-    # hyperparam_main()
+    #hyperparam_main()
     #Testing preprocessor
     # x_pre_proc,y_pre_proc=regressor._preprocessor(x_train,y_train,training=True)
     # print(f' x type = {type(x_pre_proc)},y type = {type(y_pre_proc)}')
