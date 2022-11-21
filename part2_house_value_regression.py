@@ -77,13 +77,13 @@ class Regressor():
                 
             # build torch neural network with the specified layers
             self.model = nn.Sequential(*self._layers)
-            
+            print(f"model: {self.model}")
             # initialize weights randomly (otherwise they stay at zero)
             self.model.apply(self._weights_init)
             
             # define loss and optimimser
             self.mse_loss = torch.nn.MSELoss()
-            self.optimiser = torch.optim.SGD(self.model.parameters(), self.learning_rate) 
+            self.optimiser = torch.optim.Adam(self.model.parameters(), self.learning_rate) 
         except Exception:
             traceback.print_exc()
 
@@ -348,7 +348,7 @@ class Regressor():
                     train_loss += loss_forward.item() * batch_Y.size(0)
                     samples += batch_Y.size(0)
 
-                if epoch%100 == 0:
+                if epoch%10 == 0:
                     train_template = "epoch: {} train rmse: {:e} avg y pred: {:e}"
                     print(train_template.format(epoch, np.sqrt(train_loss/samples),
                         avg_y_pred / samples))
@@ -577,6 +577,49 @@ def hyperparam_main():
     error = regressor.score(x_train, y_train)
     print("\nRegressor error: {}\n".format(error))
 
+def example_main_complex():
+
+    output_label = "median_house_value"
+
+    # Use pandas to read CSV data as it contains various object types
+    # Feel free to use another CSV reader tool
+    # But remember that LabTS tests take Pandas DataFrame as inputs
+    data = pd.read_csv("housing.csv") 
+
+    # Splitting input and output
+    x_train = data.loc[:, data.columns != output_label]
+    y_train = data.loc[:, [output_label]]
+
+    # x_train = data.loc[20:50, data.columns != output_label]
+    # y_train = data.loc[20:50, [output_label]]
+
+
+
+    # Training
+    # This example trains on the whole available dataset. 
+    # You probably want to separate some held-out data 
+    # to make sure the model isn't overfitting
+    regressor = Regressor(
+        x_train, neurons = [9,1], activations = ['relu', 'relu'], 
+        learning_rate = 0.01, nb_epoch = 3000, batch_size=128)
+
+
+    x_pre_proc,y_pre_proc=regressor._preprocessor(x_train,y_train,training=True)
+ 
+
+
+
+    #Uncomment this when done ############
+
+
+
+    regressor.fit(x_train, y_train)
+    save_regressor(regressor)
+
+    # Error
+    print(x_train.shape)
+    error = regressor.score(x_train, y_train)
+    print("\nRegressor error: {}\n".format(error))
 
 
 def example_main():
@@ -624,7 +667,8 @@ def example_main():
 
 if __name__ == "__main__":
     #example_main()
-    hyperparam_main()
+    #hyperparam_main()
+    example_main_complex()
     #Testing preprocessor
     # x_pre_proc,y_pre_proc=regressor._preprocessor(x_train,y_train,training=True)
     # print(f' x type = {type(x_pre_proc)},y type = {type(y_pre_proc)}')
