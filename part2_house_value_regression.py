@@ -585,7 +585,38 @@ def depth_tuning():
     pickle.dump(results, open("results_depth.pkl", "wb"))
     save_regressor(best_model, "part2_model_tuned_depth.pickle")
     
+def neurons_tuning():
+    output_label = "median_house_value"
 
+    # Use pandas to read CSV data as it contains various object types
+    # Feel free to use another CSV reader tool
+    # But remember that LabTS tests take Pandas DataFrame as inputs
+    data = pd.read_csv("housing.csv") 
+
+    # Splitting input and output
+    x = data.loc[:, data.columns != output_label]
+    y = data.loc[:, [output_label]]
+    
+    
+    neuron_tests=[12,24,32,48,64,72,96,112,128,136]
+
+    #change this to 2
+    optimal_dept=3
+
+    # define grid to search 
+    hyperparameters = {
+        'neurons': [[n]*optimal_dept+[1] for n in neuron_tests],
+        'activations': [["relu"]*(optimal_dept+1) for n in neuron_tests],
+        'batch_size': [128]*len(neuron_tests),
+        'nb_epoch': [2000]*len(neuron_tests),
+        'learning_rate': [0.01]*len(neuron_tests)
+    }
+    
+    results, best_model = RegressorHyperParameterSearch(x, y, hyperparameters)
+    
+    # Save results and best model
+    pickle.dump(results, open("results_neurons.pkl", "wb"))
+    save_regressor(best_model, "part2_model_tuned_neurons.pickle") 
 def example_main_complex():
 
     output_label = "median_house_value"
