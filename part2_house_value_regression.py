@@ -572,7 +572,7 @@ def depth_tuning():
         'neurons': [[32]*d+[1] for d in depths],
         'activations': [["relu"]*(d+1) for d in depths],
         'batch_size': [128],
-        'nb_epoch': [10],
+        'nb_epoch': [2000],
         'learning_rate': [0.01]
     }
     
