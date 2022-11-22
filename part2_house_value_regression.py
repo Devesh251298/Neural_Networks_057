@@ -9,7 +9,7 @@ from sklearn.model_selection import GridSearchCV
 from torch import nn
 import torch
 import traceback
-import json
+from sklearn.model_selection import train_test_split
 
 pd.options.mode.chained_assignment = None
 class Regressor():
@@ -145,7 +145,7 @@ class Regressor():
         
         # define loss and optimimser
         self.mse_loss = torch.nn.MSELoss()
-        self.optimiser = torch.optim.SGD(self.model.parameters(), self.learning_rate) 
+        self.optimiser = torch.optim.Adam(self.model.parameters(), self.learning_rate) 
         
         return self
 
@@ -348,7 +348,7 @@ class Regressor():
                     train_loss += loss_forward.item() * batch_Y.size(0)
                     samples += batch_Y.size(0)
 
-                if epoch%10 == 0:
+                if (epoch)%100 == 0:
                     train_template = "epoch: {} train rmse: {:e} avg y pred: {:e}"
                     print(train_template.format(epoch, np.sqrt(train_loss/samples),
                         avg_y_pred / samples))
@@ -443,15 +443,15 @@ class Regressor():
         #######################################################################
 
 
-def save_regressor(trained_model): 
+def save_regressor(trained_model, model_path): 
     """ 
     Utility function to save the trained regressor model in part2_model.pickle.
     """
     # If you alter this, make sure it works in tandem with load_regressor
     try : 
-        with open('part2_model.pickle', 'wb') as target:
+        with open(model_path, 'wb') as target:
             pickle.dump(trained_model, target)
-        print("\nSaved model in part2_model.pickle\n")
+        print(f"\nSaved model in {model_path}\n")
     except Exception:
         traceback.print_exc()
 
@@ -472,7 +472,7 @@ def load_regressor():
 
 
 
-def RegressorHyperParameterSearch(x_train, y_train): 
+def RegressorHyperParameterSearch(x, y, hyperparameters): 
     # Ensure to add whatever inputs you deem necessary to this function
     """
     Performs a hyper-parameter for fine-tuning the regressor implemented 
@@ -496,52 +496,64 @@ def RegressorHyperParameterSearch(x_train, y_train):
     #                       ** START OF YOUR CODE **
     #######################################################################
     
-    # do hyperparam tuning of a nn with 1 hidden layer
-    n_out = 1
-    n_in = x_train.shape[1]
-    # rule of thumb: number of hidden neurons should be less than twice input size
-    n_hidden = list(range(n_out, 2*n_in))
+    # Split into train-val to perform hyperparameter tuning
+    x_train, x_val, y_train, y_val = train_test_split(
+        x, y, test_size=0.1, random_state=42)
+
+     # get list of all possible combintations of hyperparameters
+    hyperparam_list = []
+    for neurons in hyperparameters['neurons']:
+        for activations in hyperparameters['activations']:
+            for batch_size in hyperparameters['batch_size']:
+                for nb_epoch in hyperparameters['nb_epoch']:
+                    for lr in hyperparameters['learning_rate']:
+                        hyperparam_list.append({
+                                'neurons': neurons,
+                                'activations': activations,
+                                'batch_size': batch_size,
+                                'nb_epoch': nb_epoch,
+                                'learning_rate': lr
+                            })
+    results = []
+    best_error = float('inf')
     
-    # define grid to search with 5-fold cross-validation
-    hyperparameters = {
-        'x': [x_train],
-        'neurons': [[num_neurons,1] for num_neurons in n_hidden],
-        'activations': [["relu","relu"]],
-        'batch_size': [32],
-        'nb_epoch': [500],
-        'learning_rate': [0.001]
-    }
-    # define grid search on the Regressor estimator with 5-fold cross-validation
-    gs = GridSearchCV(Regressor(x_train), hyperparameters, cv=5)
+    for param in hyperparam_list:
+        result_dict = {}
+        
+        # define a regressor with the given hyperparameters
+        regressor = Regressor(
+            x_train, neurons = param['neurons'], activations = param['activations'], 
+            batch_size = param['batch_size'], nb_epoch = param['nb_epoch'], 
+            learning_rate = param['learning_rate'])
+        
+        # train the regressor with the validation data
+        regressor.fit(x_train, y_train)
+        
+        # get train and test score
+        train_rmse = regressor.score(x_train, y_train)
+        val_rmse = regressor.score(x_val, y_val)
+        
+        # check if it is better than the best model
+        if val_rmse < best_error:
+            best_model = regressor
+            best_error = val_rmse
+            
+        result_dict['rmse_train'] = train_rmse
+        result_dict['rmse_val'] = val_rmse
+        result_dict['params'] = param
+        
+        print(f"Results: {result_dict}")
+        
+        results.append(result_dict)
     
-    # fit the training data
-    gs.fit(x_train,  y_train)
-    
-    
-    # save results
-    results = {}
-    # delete dataframe x as it cannot be converted to json
-    results['params'] = gs.cv_results_['params']
-    for param in results['params']:
-        del param['x']
-    results['mean_test_score'] = gs.cv_results_['mean_test_score'].tolist()
-    results['std_test_score'] = gs.cv_results_['std_test_score'].tolist()
-    
-    # Save results to plot the graphs later on
-    json.dump(results, open("results.json",'w'))
-    
-    # do hyperparam tuning of a nn with 2 hidden layers
-    return  # Return the chosen hyper parameters
+    return results, best_model# Return the chosen hyper parameters
 
 
     #######################################################################
     #                       ** END OF YOUR CODE **
     #######################################################################
 
-
-
-def hyperparam_main():
-
+def depth_tuning():
     output_label = "median_house_value"
 
     # Use pandas to read CSV data as it contains various object types
@@ -550,32 +562,26 @@ def hyperparam_main():
     data = pd.read_csv("housing.csv") 
 
     # Splitting input and output
-    x_train = data.loc[:, data.columns != output_label]
-    y_train = data.loc[:, [output_label]]
-
-    # Training
-    # This example trains on the whole available dataset. 
-    # You probably want to separate some held-out data 
-    # to make sure the model isn't overfitting
+    x = data.loc[:, data.columns != output_label]
+    y = data.loc[:, [output_label]]
     
-    # trying NN with 1 hidden layer with 18 (=2xinput dim) neurons
-    """
-    neurons = [1]
-    activations = ["relu"]
     
-    regressor = Regressor(x_train, neurons, activations, batch_size = 128, nb_epoch = 1000)
-
-    regressor.fit(x_train, y_train)
-    save_regressor(regressor)
-    """
+    depths = list(range(10))
+    # define grid to search 
+    hyperparameters = {
+        'neurons': [[32]*d+[1] for d in depths],
+        'activations': [["relu"]*(d+1) for d in depths],
+        'batch_size': [128],
+        'nb_epoch': [10],
+        'learning_rate': [0.01]
+    }
     
-    # do hyperparam tuning
-    RegressorHyperParameterSearch(x_train, y_train)
-
-    # Error
-    print(x_train.shape)
-    error = regressor.score(x_train, y_train)
-    print("\nRegressor error: {}\n".format(error))
+    results, best_model = RegressorHyperParameterSearch(x, y, hyperparameters)
+    
+    # Save results and best model
+    pickle.dump(results, open("results_depth.pkl", "wb"))
+    save_regressor(best_model, "part2_model_tuned_depth.pickle")
+    
 
 def example_main_complex():
 
@@ -600,17 +606,8 @@ def example_main_complex():
     # You probably want to separate some held-out data 
     # to make sure the model isn't overfitting
     regressor = Regressor(
-        x_train, neurons = [9,1], activations = ['relu', 'relu'], 
-        learning_rate = 0.01, nb_epoch = 3000, batch_size=128)
-
-
-    x_pre_proc,y_pre_proc=regressor._preprocessor(x_train,y_train,training=True)
- 
-
-
-
-    #Uncomment this when done ############
-
+        x_train, neurons = [32, 32, 1], activations = ['relu', 'relu', 'relu','relu'], 
+        learning_rate = 0.01, nb_epoch = 5000, batch_size=128)
 
 
     regressor.fit(x_train, y_train)
@@ -668,7 +665,8 @@ def example_main():
 if __name__ == "__main__":
     #example_main()
     #hyperparam_main()
-    example_main_complex()
+    #example_main_complex()
+    depth_tuning()
     #Testing preprocessor
     # x_pre_proc,y_pre_proc=regressor._preprocessor(x_train,y_train,training=True)
     # print(f' x type = {type(x_pre_proc)},y type = {type(y_pre_proc)}')
