@@ -502,18 +502,15 @@ def RegressorHyperParameterSearch(x, y, hyperparameters):
 
      # get list of all possible combintations of hyperparameters
     hyperparam_list = []
-    for neurons in hyperparameters['neurons']:
-        for activations in hyperparameters['activations']:
-            for batch_size in hyperparameters['batch_size']:
-                for nb_epoch in hyperparameters['nb_epoch']:
-                    for lr in hyperparameters['learning_rate']:
-                        hyperparam_list.append({
-                                'neurons': neurons,
-                                'activations': activations,
-                                'batch_size': batch_size,
-                                'nb_epoch': nb_epoch,
-                                'learning_rate': lr
-                            })
+    num_experiments = len(hyperparameters['neurons'])
+    for i in range(num_experiments):
+        hyperparam_list.append({
+            'neurons': hyperparameters['neurons'][i],
+            'activations':hyperparameters['activations'][i],
+            'batch_size':hyperparameters['batch_size'][i],
+            'nb_epoch': hyperparameters['nb_epoch'][i],
+            'learning_rate': hyperparameters['learning_rate'][i],
+        })
     results = []
     best_error = float('inf')
     
@@ -541,6 +538,12 @@ def RegressorHyperParameterSearch(x, y, hyperparameters):
         result_dict['rmse_train'] = train_rmse
         result_dict['rmse_val'] = val_rmse
         result_dict['params'] = param
+        
+        # get r2 scores
+        y_train_pred = regressor.predict(x_train)
+        y_val_pred = regressor.predict(x_val)
+        result_dict['r2_train'] = r2_score(y_train, y_train_pred)
+        result_dict['r2_val'] = r2_score(y_val, y_val_pred)
         
         print(f"Results: {result_dict}")
         
@@ -571,9 +574,9 @@ def depth_tuning():
     hyperparameters = {
         'neurons': [[32]*d+[1] for d in depths],
         'activations': [["relu"]*(d+1) for d in depths],
-        'batch_size': [128],
-        'nb_epoch': [2000],
-        'learning_rate': [0.01]
+        'batch_size': [128]*len(depths),
+        'nb_epoch': [2000]*len(depths),
+        'learning_rate': [0.01]*len(depths)
     }
     
     results, best_model = RegressorHyperParameterSearch(x, y, hyperparameters)
