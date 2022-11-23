@@ -617,6 +617,74 @@ def neurons_tuning():
     # Save results and best model
     pickle.dump(results, open("results_neurons.pkl", "wb"))
     save_regressor(best_model, "part2_model_tuned_neurons.pickle") 
+
+def lr_tuning():
+    output_label = "median_house_value"
+
+    # Use pandas to read CSV data as it contains various object types
+    # Feel free to use another CSV reader tool
+    # But remember that LabTS tests take Pandas DataFrame as inputs
+    data = pd.read_csv("housing.csv") 
+
+    # Splitting input and output
+    x = data.loc[:, data.columns != output_label]
+    y = data.loc[:, [output_label]]
+    
+    
+    neuron_optimal=48
+    optimal_dept=3
+
+    lr_tests = [1, 0.1, 0.01, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8]
+
+    # define grid to search 
+    hyperparameters = {
+        'neurons': [[neuron_optimal]*optimal_dept+[1]]*len(lr_tests),
+        'activations': [["relu"]*(optimal_dept+1)]*len(lr_tests),
+        'batch_size': [128]*len(lr_tests),
+        'nb_epoch': [2000]*len(lr_tests),
+        'learning_rate': lr_tests
+    }
+    
+    results, best_model = RegressorHyperParameterSearch(x, y, hyperparameters)
+    
+    # Save results and best model
+    pickle.dump(results, open("results_learning_rate.pkl", "wb"))
+    save_regressor(best_model, "part2_model_tuned_learning_rate.pickle")   
+
+def batch_size_tuning():
+    output_label = "median_house_value"
+
+    # Use pandas to read CSV data as it contains various object types
+    # Feel free to use another CSV reader tool
+    # But remember that LabTS tests take Pandas DataFrame as inputs
+    data = pd.read_csv("housing.csv") 
+
+    # Splitting input and output
+    x = data.loc[:, data.columns != output_label]
+    y = data.loc[:, [output_label]]
+    
+    
+    neuron_optimal = 48
+    optimal_dept = 3
+    lr_optimal = 1e-3
+    epochs_optimal = 2000 
+    batch_size_test = [32, 64, 96, 128, 160, 192, 224, 256]
+
+    # define grid to search 
+    hyperparameters = {
+        'neurons': [[neuron_optimal]*optimal_dept+[1]]*len(batch_size_test),
+        'activations': [["relu"]*(optimal_dept+1)]*len(batch_size_test),
+        'batch_size': batch_size_test,
+        'nb_epoch': [epochs_optimal]*len(batch_size_test),
+        'learning_rate': [lr_optimal]*len(batch_size_test)
+    }
+    
+    results, best_model = RegressorHyperParameterSearch(x, y, hyperparameters)
+    
+    # Save results and best model
+    pickle.dump(results, open("results_epochs_batch_size.pkl", "wb"))
+    save_regressor(best_model, "part2_model_tuned_batch_size.pickle")   
+
 def example_main_complex():
 
     output_label = "median_house_value"
@@ -700,7 +768,7 @@ if __name__ == "__main__":
     #example_main()
     #hyperparam_main()
     #example_main_complex()
-    depth_tuning()
+    batch_size_tuning()
     #Testing preprocessor
     # x_pre_proc,y_pre_proc=regressor._preprocessor(x_train,y_train,training=True)
     # print(f' x type = {type(x_pre_proc)},y type = {type(y_pre_proc)}')
