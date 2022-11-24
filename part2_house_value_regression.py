@@ -404,17 +404,27 @@ def RegressorHyperParameterSearch(x, y, hyperparameters):
     Performs a hyper-parameter for fine-tuning the regressor implemented 
     in the Regressor class.
     
-    We will perform hyper-parameter tuning using a bottom-up approach.
-    First we will fine-tune a NN with 1 hidden layer, and get the optimal
-    number of neurons. Then we will fine-tune a NN with 2 hidden layers,
-    fixing the number of neurons for the first layer and tuning the number
-    of neurons of the second neuron. Etcetera...
+    This function 
 
     Arguments:
-        Add whatever inputs you need.
+        x (pd.DataFrame): raw input dataset
+        y (pd.DataFrame): raw output data
+        hyperparameters (dict[list]) dictionary containing the search range
+            for each hyperparamter: neurons, activations, learning_rate,
+            nb_epochs and batcch_size.
         
     Returns:
-        The function should return your optimised hyper-parameters. 
+        results (list[dict]): evaluation metrics obtained for each combination
+            of hyperparameters. Each element of the list is a dictionary containing
+            the set of hyperparameters and the RMSE and the R2-score for the
+            training and validation set.
+            
+            This is used to create the plots in our report. The optimal hyperparameters
+            correspond to the element in the list with the lowest validation RMSE score.
+            
+        best_model (Regressor): model trained with the hyperparameters that
+            minimize validation error.
+        
 
     """
 
@@ -483,6 +493,15 @@ def RegressorHyperParameterSearch(x, y, hyperparameters):
     #######################################################################
 
 def depth_tuning():
+    """ Tune the network depth.
+    
+    This function searches for the optimal network depth in the range [1,10]
+    using the RegressorHyperParameterSearch function.
+    
+    The results are saved in `results_depth.pkl`, and the model
+    trained with the optimal hyperparameters is saved in the path:
+    `part2_model_tuned_depth.pickle`.
+    """
     output_label = "median_house_value"
 
     # Use pandas to read CSV data as it contains various object types
@@ -512,6 +531,16 @@ def depth_tuning():
     save_regressor(best_model, "part2_model_tuned_depth.pickle")
     
 def neurons_tuning():
+    """ Tune number of neurons in the hidden layers.
+    
+    This function uses the optimal depth  found with the  previous functions,
+     and finds the best number of neurons in the range ([12,136]) with 
+     the RegressorHyperParameterSearch function.
+    
+    The results are saved in `results_neurons.pkl`, and the model
+    trained with the optimal hyperparameters is saved in the path:
+    `part2_model_tuned_neurons.pickle`.
+    """
     output_label = "median_house_value"
 
     # Use pandas to read CSV data as it contains various object types
@@ -546,6 +575,16 @@ def neurons_tuning():
 
 
 def lr_tuning():
+    """ Tune learning rate.
+    
+    This function uses the optimal depth and number of neurons found with the
+     previous functions, and finds the best learning rate
+    in the range ([1e-8,1]) with the RegressorHyperParameterSearch function.
+    
+    The results are saved in `results_learning_rate.pkl`, and the model
+    trained with the optimal hyperparameters is saved in the path:
+    `part2_model_tuned_learning_rate.pickle`.
+    """
     output_label = "median_house_value"
 
     # Use pandas to read CSV data as it contains various object types
@@ -580,6 +619,20 @@ def lr_tuning():
 
 
 def batch_size_tuning():
+    """ Tune batch size.
+    
+    This function uses the optimal depth, number of neurons and learning
+    rate found with the previous functions, and finds the best batch size
+    in the range ([32,256]) with the RegressorHyperParameterSearch function.
+    
+    The results are saved in `results_epochs_batch_size.pkl`, and the model
+    trained with the optimal hyperparameters is saved in the path:
+    `part2_model_tuned_batch_size.pickle`.
+    
+    This function is the last step of our top-down hyperparameter search,
+    and therefore the best model is also used as our final model, which
+    is saved as: `part2_model.pickle`.
+    """
     output_label = "median_house_value"
 
     # Use pandas to read CSV data as it contains various object types
