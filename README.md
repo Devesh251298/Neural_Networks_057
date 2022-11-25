@@ -13,6 +13,6 @@ To train a Regressor model, simply run `python part2_house_value_regression.py`.
 ```
 
 ### Performing hyperparameter tuning
-To test any of the tuning functions, uncomment the corresponding line from lines 692-698. Each function performs a search over a specific hyperparamater, and saves a dictionary with the evaluation results used in the report as `results_HYPERPARAMETER.pkl`. It also saves the best model as `part2_model_tuned_HYPERPARAMETER.pickle`. 
+To test any of the tuning functions, uncomment the corresponding line from lines 692-698. Each function performs a search over a specific hyperparamater, and saves a dictionary with the evaluation results used in the report as `results_HYPERPARAMETER.pkl`. It also saves the best model as `part2_model_tuned_HYPERPARAMETER.pickle`. The pickle files with the results of the hyperparameter search can be found under the folder `tuning_results`.
 
 The best model is saved as `part2_model.pickle`. It was obtained using the `batch_size_tuning` function, because batch_size is the last hyperparameter we tune, so the function already uses the optimal depth, number of neurons and learning rate found in previous steps.
