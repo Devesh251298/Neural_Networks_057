@@ -15,8 +15,6 @@ pd.options.mode.chained_assignment = None
 class Regressor():
 
     def __init__(self, x, neurons=[1], activations=["relu"], learning_rate = 0.001, batch_size = 64, nb_epoch = 1000):
-        # You can add any input parameters you need
-        # Remember to set them with a default value for LabTS tests
         """ 
         Initialise the model.
           
@@ -33,12 +31,6 @@ class Regressor():
             - batch_size {int} -- number of instances in each batch
 
         """
-
-        #######################################################################
-        #                       ** START OF YOUR CODE **
-        #######################################################################
-
-        
         # attributes related to preprocessing
         self.x = x
         self.median_train_dict=dict() # Stores all median values for training data.
@@ -87,9 +79,6 @@ class Regressor():
         self.mse_loss = torch.nn.MSELoss()
         self.optimiser = torch.optim.Adam(self.model.parameters(), self.learning_rate) 
 
-        #######################################################################
-        #                       ** END OF YOUR CODE **
-        #######################################################################
     
     def _preprocessor(self, x, y = None, training = False):
             """ 
@@ -109,11 +98,6 @@ class Regressor():
                   size (batch_size, 1).
 
             """
-            #######################################################################
-            #                       ** START OF YOUR CODE **
-            #######################################################################
-
-            # Replace this code with your own
             # Return preprocessed x and y, return None for y if it was None
 
             if training==True:
@@ -132,12 +116,8 @@ class Regressor():
                 for column in x_columns:
                     replace_NA(x,column)
                     
-                # Replace all x 'object' types Nan with median
-                # imp = SimpleImputer(missing_values='NAN', strategy='most_frequent', fill_value=None)
-                # new_col=imp.fit_transform(np.array(x['ocean_proximity']).reshape(-1, 1))
 
-                # x['ocean_proximity']=new_col
-                most_freq_cat=x['ocean_proximity'].value_counts()[0]#.to_frame()
+                most_freq_cat=x['ocean_proximity'].value_counts()[0]
                 self.median_train_dict['ocean_proximity']=most_freq_cat
           
                 x['ocean_proximity'].fillna(most_freq_cat,inplace=True)
@@ -153,23 +133,21 @@ class Regressor():
                     y["median_house_value"].fillna(median_col_y,inplace=True)
                     y=y.to_numpy()
 
-                #Storing one_hot encoded data to be used in validation set
+                # Storing one_hot encoded data to be used in validation set
                 cat_columns = ["ocean_proximity"]
             
-                #create the dummy variables
+                # create the dummy variables
                 df_processed = pd.get_dummies(x,prefix_sep="__",columns=cat_columns)
 
-                #store the dummy variables from training dataset
+                # store the dummy variables from training dataset
                 self.cat_dummies = [col for col in df_processed if "__" in col and col.split("__")[0] in cat_columns]
-                #store all columns of the training dataset in a list
+                # store all columns of the training dataset in a list
                 self.processed_columns = list(df_processed.columns[:])
 
                 #Normalize all the clean data
                 self.min_train=df_processed.min()
                 self.max_train=df_processed.max()
                 x=(df_processed-self.min_train)/(self.max_train-self.min_train)
-
-
                 
             else: #if data is test data
                 
@@ -194,29 +172,29 @@ class Regressor():
                     y["median_house_value"].fillna(self.median_train_dict["median_house_value"],inplace=True)
                     y=y.to_numpy()
 
-                #Convert all the clean data to numerical data
+                # Convert all the clean data to numerical data
                 # one_hot_encoded_data=pd.get_dummies(x, columns = ['ocean_proximity'])
                 
-                #one hot encode the test data set
+                # one hot encode the test data set
                 cat_columns = ["ocean_proximity"]
 
                 df_test_processed = pd.get_dummies(x, prefix_sep="__", columns=cat_columns)
 
-                #removing additional features from test set
+                # removing additional features from test set
                 for col in df_test_processed.columns:
                     if ("__" in col) and (col.split("__")[0] in cat_columns) and col not in self.cat_dummies:
                         df_test_processed.drop(col, axis=1, inplace=True)  
 
-                #adding 0's to missing features in test set
+                # adding 0's to missing features in test set
                 for col in self.cat_dummies:
                     if col not in df_test_processed.columns:
                         print(f"col {col} not in df_test_processed.columns")
                         df_test_processed[col] = 0
 
-                #add all missing One hot encoders
+                # add all missing One hot encoders
                 df_test_processed = df_test_processed[self.processed_columns]
 
-                #Normalize all the clean data
+                # Normalize all the clean data
                 for column in self.processed_columns:
                     df_test_processed[column] -= self.min_train[column]
                     df_test_processed[column] /= (self.max_train[column] - self.min_train[column])
@@ -246,14 +224,11 @@ class Regressor():
 
         """
 
-        #######################################################################
-        #                       ** START OF YOUR CODE **
-        #######################################################################
         header_template = "Training a Regressor model with: x shape: {}, y shape: {}, neurons: {}, activations: {}, lr: {}, batch-size: {}, nb_epochs: {}"
         print(header_template.format(x.shape, y.shape, self.neurons, self.activations, self.learning_rate, self.batch_size, self.nb_epoch))
    
 
-        X, Y = self._preprocessor(x, y = y, training = True) # Do not forget
+        X, Y = self._preprocessor(x, y = y, training = True) 
         # Transform numpy arrays into tensors
         X = Variable(torch.from_numpy(X).type(dtype=torch.FloatTensor)).requires_grad_(True)
         Y = Variable(torch.from_numpy(Y).type(dtype=torch.FloatTensor)).requires_grad_(True)
@@ -290,10 +265,6 @@ class Regressor():
                 print(train_template.format(epoch, np.sqrt(train_loss/samples),
                     avg_y_pred / samples))
 
-        #######################################################################
-        #                       ** END OF YOUR CODE **
-        #######################################################################
-
         
             
     def predict(self, x):
@@ -308,9 +279,6 @@ class Regressor():
             {np.ndarray} -- Predicted value for the given input (batch_size, 1).
 
         """
-        #######################################################################
-        #                       ** START OF YOUR CODE **
-        #######################################################################
 
         X, _ = self._preprocessor(x, training = False)
         print(f"Predicting Y for X of shape {X.shape}")
@@ -318,10 +286,6 @@ class Regressor():
         X = Variable(torch.from_numpy(X).type(dtype=torch.float32 ))
         output = self.model(X)
         return output.detach().numpy()
-
-        #######################################################################
-        #                       ** END OF YOUR CODE **
-        #######################################################################
 
     def score(self, x, y):
         """
@@ -337,18 +301,10 @@ class Regressor():
 
         """
 
-        #######################################################################
-        #                       ** START OF YOUR CODE **
-        #######################################################################
-        X, Y = self._preprocessor(x, y, training = False) # Do not forget
+        X, Y = self._preprocessor(x, y, training = False) 
         print(f"Scoring with x of shape {X.shape} and y of shape {Y.shape}")
 
         y_model = self.predict(x)        
-        
-        #######################################################################
-        #                       ** END OF YOUR CODE **
-        #######################################################################
-
 
         return mean_squared_error(Y, y_model, squared=False) # Replace this code with your own
 
@@ -399,7 +355,6 @@ def load_regressor():
 
 
 def RegressorHyperParameterSearch(x, y, hyperparameters): 
-    # Ensure to add whatever inputs you deem necessary to this function
     """
     Performs a hyper-parameter for fine-tuning the regressor implemented 
     in the Regressor class.
@@ -428,15 +383,11 @@ def RegressorHyperParameterSearch(x, y, hyperparameters):
 
     """
 
-    #######################################################################
-    #                       ** START OF YOUR CODE **
-    #######################################################################
-    
     # Split into train-val to perform hyperparameter tuning
     x_train, x_val, y_train, y_val = train_test_split(
         x, y, test_size=0.1, random_state=42)
 
-     # get list of all possible combintations of hyperparameters
+    # get list of all possible combintations of hyperparameters
     hyperparam_list = []
     num_experiments = len(hyperparameters['neurons'])
     for i in range(num_experiments):
@@ -485,12 +436,7 @@ def RegressorHyperParameterSearch(x, y, hyperparameters):
         
         results.append(result_dict)
     
-    return results, best_model# Return the chosen hyper parameters
-
-
-    #######################################################################
-    #                       ** END OF YOUR CODE **
-    #######################################################################
+    return results, best_model # Return the chosen hyper parameters
 
 def depth_tuning():
     """ Tune the network depth.
@@ -705,5 +651,4 @@ if __name__ == "__main__":
     # neurons_tuning()
     # lr_tuning()
     # batch_size_tuning()
-    
     
